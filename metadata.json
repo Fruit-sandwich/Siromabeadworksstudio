@@ -1,0 +1,8 @@
+{
+  "name": "Siroma beadworks",
+  "description": "Artisan loom and off-loom beadwork design studio for crafting millimeter-accurate patterns, word charts, and physical production specs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
