@@ -370,7 +370,7 @@ export const PrintablePatternModal: React.FC<PrintablePatternModalProps> = ({
 
           {/* Footer certification */}
           <div className="pt-6 border-t border-[#ded5c9] text-center text-[10px] text-[#78716c] font-sans">
-            Generated with Siroma beadworks Studio · Artisan Beadwork Loom & Peyote Specification
+            Generated with Siroma Beadworks Studio · Artisan Beadwork Loom & Peyote Specification
           </div>
         </div>
       </div>

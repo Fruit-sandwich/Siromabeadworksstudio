@@ -3,8 +3,8 @@ import { buildPaletteColors, PALETTE_PRESETS } from '../utils/colorUtils';
 import { createJaguarLoomCells, JAGUAR_COLS, JAGUAR_ROWS } from './jaguarPattern';
 
 export const DEFAULT_SETTINGS: CanvasSettings = {
-  columns: JAGUAR_COLS,
-  rows: JAGUAR_ROWS,
+  columns: 34,
+  rows: 62,
   cellSpacing: 11,
   dotSize: 8,
   beadShape: 'circle',
@@ -20,8 +20,8 @@ export const DEFAULT_SETTINGS: CanvasSettings = {
   rowNumberingDirection: 'bottom-to-top',
   showGrid: true,
   showEmptyDots: true,
-  millimetresPerBead: 1.6,
-  beadTypeLabel: 'Miyuki Delica 11/0 (Cylinder)',
+  millimetresPerBead: 1.76,
+  beadTypeLabel: 'Miyuki / Preciosa (6cm × 11cm canvas)',
 };
 
 /**
@@ -148,7 +148,7 @@ export const PRESET_DESIGNS: DesignDocument[] = [
     schemaVersion: '0.1.0',
     metadata: {
       title: 'Jaguar Loom Tapestry',
-      author: 'Siroma beadworks',
+      author: 'Siroma Beadworks Studio',
       description: 'The signature Siroma artisan tapestry featuring a watchful jaguar motif with emerald gaze, black rosettes, and white loom fringe borders.',
       materialsNotes: 'Preciosa Ornela / Miyuki 11/0 seed beads in Amber Orange (#ea6a1a), Jet Black (#111111), Alabaster White (#f4eee4), and Emerald Green (#2a8742). Woven on a traditional bead loom.',
       createdAt: '2026-09-22T16:00:00.000Z',

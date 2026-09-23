@@ -12,16 +12,18 @@
  */
 
 export const JAGUAR_COLS = 34;
-export const JAGUAR_ROWS = 60;
+export const JAGUAR_ROWS = 62;
 
-// 60 rows from Row 0 (top of woven piece) down to Row 59 (bottom of woven piece).
+// 62 rows from Row 0 (top of woven piece) down to Row 61 (bottom of woven piece).
+// Exactly calibrated to 6cm × 11cm (ratio 6:11 = 34 cols × 62.3 rows).
 // Each string is exactly 34 characters long.
 export const JAGUAR_ROWS_DATA: string[] = [
-  // Rows 0-3: Top white loom fringe border (4 rows of solid white)
+  // Rows 0-4: Top white loom fringe border (5 rows of solid white)
   "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 0 (top border)
   "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 1
   "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 2
   "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 3
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 4
 
   // Rows 4-8: Crown of head and ear tips with rosette clusters
   "WW K K K K K K K K K K K K K K  WW", // Row 4
@@ -89,11 +91,12 @@ export const JAGUAR_ROWS_DATA: string[] = [
   "WW O KKK OOOOO KKKK OOOOO KKK O WW", // Row 54
   "WWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOWW", // Row 55
 
-  // Rows 56-59: Bottom white loom fringe border (4 rows of solid white)
-  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 56
+  // Rows 57-61: Bottom white loom fringe border (5 rows of solid white)
   "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 57
   "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 58
   "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 59
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 60
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", // Row 61
 ];
 
 /**

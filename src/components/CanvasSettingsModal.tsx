@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sliders, Check, Ruler } from 'lucide-react';
+import { X, Sliders, Check, Ruler, Sparkles } from 'lucide-react';
 import { CanvasSettings, BeadShape, BeadFinish } from '../types/bead';
 import { BEAD_STANDARDS } from '../utils/colorUtils';
 
@@ -135,8 +135,95 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
                 />
               </div>
             </div>
+
+            {/* Quick Physical Aspect Ratio Presets */}
+            <div className="pt-1">
+              <span className="text-[11px] text-[#a3978a] font-medium block mb-1.5 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-[#e87524]" />
+                Physical Canvas Proportions (6cm × 11cm Aspect Ratio 6:11):
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCols(34);
+                    setRows(62);
+                    setMmPerBead(1.76);
+                    setSelectedStandard('Siroma Tapestry 6cm × 11cm (34×62)');
+                  }}
+                  className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
+                    cols === 34 && rows === 62
+                      ? 'border-[#e87524] bg-[#e87524]/15 text-[#f8f3eb] ring-1 ring-[#e87524]'
+                      : 'border-[#2e2722] bg-[#171412] text-[#ded5c9] hover:border-[#483d35]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">34 × 62 (Exact 6×11cm)</span>
+                    {cols === 34 && rows === 62 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#e87524]" />
+                    )}
+                  </div>
+                  <span className="text-[10px] text-[#a3978a]">
+                    Matches physical piece @ 1.76mm
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCols(37);
+                    setRows(68);
+                    setMmPerBead(1.6);
+                    setSelectedStandard('Miyuki Delica 11/0 (Cylinder)');
+                  }}
+                  className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
+                    cols === 37 && rows === 68
+                      ? 'border-[#e87524] bg-[#e87524]/15 text-[#f8f3eb] ring-1 ring-[#e87524]'
+                      : 'border-[#2e2722] bg-[#171412] text-[#ded5c9] hover:border-[#483d35]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">37 × 68 (Miyuki 11/0)</span>
+                    {cols === 37 && rows === 68 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#e87524]" />
+                    )}
+                  </div>
+                  <span className="text-[10px] text-[#a3978a]">
+                    59.2 × 108.8 mm (1.6mm Delica)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCols(28);
+                    setRows(52);
+                    setMmPerBead(2.1);
+                    setSelectedStandard('Round Seed Bead 11/0 (Czech)');
+                  }}
+                  className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
+                    cols === 28 && rows === 52
+                      ? 'border-[#e87524] bg-[#e87524]/15 text-[#f8f3eb] ring-1 ring-[#e87524]'
+                      : 'border-[#2e2722] bg-[#171412] text-[#ded5c9] hover:border-[#483d35]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">28 × 52 (Czech 11/0)</span>
+                    {cols === 28 && rows === 52 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#e87524]" />
+                    )}
+                  </div>
+                  <span className="text-[10px] text-[#a3978a]">
+                    58.8 × 109.2 mm (2.1mm Seed)
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <p className="text-[11px] text-[#71675f]">
               Total beads capacity: <span className="font-mono-numbers font-medium text-[#ded5c9]">{(cols * rows).toLocaleString()} beads</span>
+              {' · '}
+              Aspect ratio: <span className="font-mono-numbers font-medium text-[#ded5c9]">{(cols / rows).toFixed(3)} (Target: {(6 / 11).toFixed(3)})</span>
             </p>
           </div>
 

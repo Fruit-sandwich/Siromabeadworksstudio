@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-2 h-2 rounded-full bg-[#171412] shadow-inner" />
           </div>
           <span className="font-cinzel text-lg font-semibold tracking-wide text-[#f8f3eb]">
-            Siroma beadworks
+            Siroma Beadworks Studio
           </span>
         </div>
 
@@ -61,9 +61,13 @@ export const Header: React.FC<HeaderProps> = ({
             {design.metadata.title || 'Untitled Design'}
           </button>
           <span aria-hidden="true" className="text-[#574b43]">·</span>
-          <span className="font-mono-numbers">{columns} × {rows} beads</span>
-          <span aria-hidden="true" className="text-[#574b43]">·</span>
-          <span className="font-mono-numbers">{widthMm} × {heightMm} mm</span>
+          <button
+            onClick={onOpenSettings}
+            className="font-mono-numbers hover:text-[#e87524] transition-colors"
+            title="Click to calibrate physical canvas size & aspect ratio"
+          >
+            {columns} × {rows} beads ({widthMm} × {heightMm} mm)
+          </button>
           <span aria-hidden="true" className="text-[#574b43]">·</span>
           <span className="text-[#ded5c9]">{validation.beadCount.toLocaleString()} placed</span>
         </div>

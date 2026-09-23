@@ -20,7 +20,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h2 className="text-base font-semibold text-[#f8f3eb] font-cinzel">
-                Siroma beadworks Guide
+                Siroma Beadworks Studio Guide
               </h2>
               <p className="text-xs text-[#a3978a]">
                 Virtual beadwork sketching principles and keyboard shortcuts.

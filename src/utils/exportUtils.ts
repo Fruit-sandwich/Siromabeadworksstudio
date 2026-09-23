@@ -21,7 +21,7 @@ export function downloadFile(content: string, fileName: string, contentType: str
  */
 export function exportToJson(design: DesignDocument): string {
   const exportPayload = {
-    app: 'Beaded Canvas',
+    app: 'Siroma Beadworks Studio',
     app_version: design.metadata.appVersion || '0.1.0',
     title: design.metadata.title,
     author: design.metadata.author,

@@ -116,6 +116,7 @@ export function getContrastColor(hex: string): string {
 }
 
 export const BEAD_STANDARDS = [
+  { name: 'Siroma Tapestry 6cm × 11cm (34×62)', mm: 1.76, category: 'Artisan Tapestry' },
   { name: 'Miyuki Delica 11/0 (Cylinder)', mm: 1.6, category: 'Precision Cylinder' },
   { name: 'Toho Treasures 11/0 (Cylinder)', mm: 1.65, category: 'Precision Cylinder' },
   { name: 'Round Seed Bead 11/0 (Czech)', mm: 2.1, category: 'Round Seed' },
