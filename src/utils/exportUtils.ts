@@ -37,9 +37,12 @@ export function exportToJson(design: DesignDocument): string {
       aspect_ratio: design.settings.aspectRatio,
       spacing: design.settings.cellSpacing,
       dot_size: design.settings.dotSize,
-      physical_scale_mm_per_bead: design.settings.millimetresPerBead,
-      estimated_width_mm: (design.settings.columns * design.settings.millimetresPerBead).toFixed(1),
-      estimated_height_mm: (design.settings.rows * design.settings.millimetresPerBead).toFixed(1),
+      physical_width_cm: design.settings.physicalWidthCm || 5.7,
+      physical_height_cm: design.settings.physicalHeightCm || 11.1,
+      physical_scale_mm_per_bead: design.settings.millimetresPerBead || 1.5833,
+      physical_scale_mm_per_row: design.settings.millimetresPerRow || 2.2653,
+      estimated_width_mm: (design.settings.physicalWidthCm ? design.settings.physicalWidthCm * 10 : design.settings.columns * (design.settings.millimetresPerBead || 1.5833)).toFixed(1),
+      estimated_height_mm: (design.settings.physicalHeightCm ? design.settings.physicalHeightCm * 10 : design.settings.rows * (design.settings.millimetresPerRow || 2.2653)).toFixed(1),
       edge_border: design.settings.edgeBorder,
     },
     palette: design.palette.map((p) => ({
@@ -58,19 +61,17 @@ export function exportToJson(design: DesignDocument): string {
  * Exports CSV colour grid
  */
 export function exportToCsv(design: DesignDocument): string {
-  const { columns, rows } = design.settings;
+  const { columns, rows, physicalWidthCm, physicalHeightCm, millimetresPerBead, millimetresPerRow } = design.settings;
   const lines: string[] = [];
+  const widthMm = (physicalWidthCm ? physicalWidthCm * 10 : columns * (millimetresPerBead || 1.5833)).toFixed(1);
+  const heightMm = (physicalHeightCm ? physicalHeightCm * 10 : rows * (millimetresPerRow || 2.2653)).toFixed(1);
 
   // Metadata headers
   lines.push(`# Beaded Canvas CSV Grid Export`);
   lines.push(`# Title: "${design.metadata.title.replace(/"/g, '""')}"`);
   lines.push(`# Author: "${design.metadata.author.replace(/"/g, '""')}"`);
   lines.push(`# Dimensions: ${columns} cols x ${rows} rows`);
-  lines.push(
-    `# Physical Size: ${(columns * design.settings.millimetresPerBead).toFixed(1)}mm x ${(
-      rows * design.settings.millimetresPerBead
-    ).toFixed(1)}mm`
-  );
+  lines.push(`# Physical Size: ${widthMm}mm x ${heightMm}mm (${(parseFloat(widthMm)/10).toFixed(1)}cm x ${(parseFloat(heightMm)/10).toFixed(1)}cm)`);
   lines.push('');
 
   // Column headers (Col 1, Col 2, ...)
@@ -99,10 +100,18 @@ export function exportToCsv(design: DesignDocument): string {
  * Exports high precision SVG
  */
 export function exportToSvg(design: DesignDocument): string {
-  const { columns, rows, cellSpacing, dotSize, beadShape } = design.settings;
+  const { columns, rows, cellSpacing, dotSize, beadShape, aspectRatio, physicalWidthCm, physicalHeightCm, millimetresPerBead, millimetresPerRow } = design.settings;
+
+  const mmPerCol = physicalWidthCm && columns ? (physicalWidthCm * 10) / columns : (millimetresPerBead || 1.5833);
+  const mmPerRow = physicalHeightCm && rows ? (physicalHeightCm * 10) / rows : (millimetresPerRow || 2.2653);
+  const ratio = aspectRatio === 'square' ? 1.0 : (mmPerRow / mmPerCol);
+
+  const cellSpacingX = cellSpacing;
+  const cellSpacingY = cellSpacing * ratio;
+
   const pad = 40;
-  const width = columns * cellSpacing + pad * 2;
-  const height = rows * cellSpacing + pad * 2;
+  const width = columns * cellSpacingX + pad * 2;
+  const height = rows * cellSpacingY + pad * 2;
 
   let svgElements = '';
 
@@ -110,8 +119,8 @@ export function exportToSvg(design: DesignDocument): string {
   svgElements += `<rect width="${width}" height="${height}" fill="#f4eee4" rx="8" />\n`;
 
   // Grid border frame
-  const gridW = columns * cellSpacing;
-  const gridH = rows * cellSpacing;
+  const gridW = columns * cellSpacingX;
+  const gridH = rows * cellSpacingY;
   svgElements += `<rect x="${pad}" y="${pad}" width="${gridW}" height="${gridH}" fill="none" stroke="#ded5c9" stroke-width="1.5" />\n`;
 
   // Bead defs for 3D gradient
@@ -129,24 +138,24 @@ export function exportToSvg(design: DesignDocument): string {
     for (let c = 0; c < columns; c++) {
       const idx = r * columns + c;
       const color = design.cells[idx];
-      const cx = pad + c * cellSpacing + cellSpacing / 2;
-      const cy = pad + r * cellSpacing + cellSpacing / 2;
+      const cx = pad + c * cellSpacingX + cellSpacingX / 2;
+      const cy = pad + r * cellSpacingY + cellSpacingY / 2;
       const radius = dotSize / 2;
 
       if (color) {
         if (beadShape === 'circle') {
           const rx = (radius * 0.94).toFixed(2);
-          const ry = (radius * 1.08).toFixed(2);
+          const ry = (radius * ratio * 0.94).toFixed(2);
           const holeRx = Math.max(0.75, radius * 0.2).toFixed(2);
-          const holeRy = Math.max(0.9, radius * 0.24).toFixed(2);
+          const holeRy = Math.max(0.9, radius * ratio * 0.22).toFixed(2);
           svgElements += `  <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${color}" stroke="#171412" stroke-width="0.5" />\n`;
           svgElements += `  <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#beadShine)" />\n`;
           // Subtle bead hole along vertical warp path
           svgElements += `  <ellipse cx="${cx}" cy="${cy}" rx="${holeRx}" ry="${holeRy}" fill="#171412" fill-opacity="0.5" />\n`;
         } else if (beadShape === 'delica_cylinder') {
           const w = dotSize * 0.9;
-          const h = dotSize * 0.7;
-          svgElements += `  <rect x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${radius * 0.3}" fill="${color}" stroke="#171412" stroke-width="0.5" />\n`;
+          const h = dotSize * ratio * 0.72;
+          svgElements += `  <rect x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${radius * 0.25}" fill="${color}" stroke="#171412" stroke-width="0.5" />\n`;
         } else {
           svgElements += `  <rect x="${cx - radius}" y="${cy - radius}" width="${dotSize}" height="${dotSize}" rx="2" fill="${color}" />\n`;
         }

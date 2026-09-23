@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Download, FileCode, FileSpreadsheet, Image as ImageIcon, Sparkles, Check } from 'lucide-react';
+import { X, Download, FileCode, FileSpreadsheet, Image as ImageIcon, Sparkles, Check, Printer } from 'lucide-react';
 import { DesignDocument } from '../types/bead';
 import { exportToJson, exportToCsv, exportToSvg, downloadFile } from '../utils/exportUtils';
 
@@ -7,12 +7,14 @@ interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   design: DesignDocument;
+  onOpenPrint?: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
   onClose,
   design,
+  onOpenPrint,
 }) => {
   const [copiedJson, setCopiedJson] = useState(false);
   const [includeGridInPng, setIncludeGridInPng] = useState(true);
@@ -196,6 +198,37 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
         {/* Content Options */}
         <div className="p-6 space-y-4 text-sm">
+          {/* Option 0: Printable Pattern & PDF (with Super-Condensed mode) */}
+          {onOpenPrint && (
+            <div className="p-4 bg-[#171412] border border-[#e87524]/40 hover:border-[#e87524] rounded-xl flex items-start justify-between gap-4 transition-all shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-[#e87524]/20 text-[#e87524] flex items-center justify-center shrink-0 mt-0.5">
+                  <Printer className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-xs text-[#f8f3eb]">Printable Artisan Pattern / PDF</h3>
+                    <span className="text-[10px] font-semibold bg-[#8c3b20] text-white px-1.5 py-0.2 rounded">
+                      ⚡ Super-Condensed
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#a3978a] mt-0.5">
+                    Paper-saving row-by-row word chart with color bead dot + number count, 2-column sheet layout, and inventory breakdown.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenPrint();
+                }}
+                className="px-3 py-1.5 bg-[#e87524] hover:bg-[#d46517] text-white text-xs font-semibold rounded-md shrink-0 transition-colors shadow-sm"
+              >
+                Open PDF Sheet
+              </button>
+            </div>
+          )}
+
           {/* Option 1: High-Res PNG */}
           <div className="p-4 bg-[#171412] border border-[#2e2722] hover:border-[#483d35] rounded-xl flex items-start justify-between gap-4 transition-all">
             <div className="flex items-start gap-3">

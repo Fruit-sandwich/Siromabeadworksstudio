@@ -1,0 +1,141 @@
+/**
+ * Generates an SVG Data URI for CSS `cursor: url(...) x y, crosshair`
+ * 
+ * To ensure 100% browser rendering across Chrome, Safari, Edge, Firefox:
+ * 1. Base64 encoding avoids any URI character escaping or quotes parsing bugs.
+ * 2. Proper SVG dimensions (32x32) and viewBox.
+ * 3. Exact layer ordering.
+ */
+export function getBeadHandCursor(beadColor: string = '#d45500'): string {
+  const safeColor = beadColor.startsWith('#') ? beadColor : `#${beadColor}`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="64 125 44 48">
+  <defs>
+    <filter id="c-shadow" x="-20%" y="-20%" width="150%" height="150%">
+      <feDropShadow dx="0.5" dy="1" stdDeviation="0.8" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+  </defs>
+  <g filter="url(#c-shadow)">
+    <!-- 1. Hand solid fill (base) -->
+    <path
+      d="m 84.677009,129.50595 c -1.667942,0.0737 -3.058263,1.02009 -3.625493,2.59833 -0.261272,0.72687 -0.190948,2.02036 -0.190948,3.68525 0,3.36819 0.158888,5.27509 0.220832,6.8549 l 0.112451,2.87233 -1.318919,-1.24445 c -2.13957,-2.01836 -3.547827,-2.52671 -5.098889,-1.84061 -1.957521,0.86591 -2.836902,2.86151 -2.251363,5.10953 0.374095,1.43626 0.783622,2.18873 2.245286,4.12338 2.145735,2.84004 2.938227,4.00259 4.317365,6.33321 1.934497,3.2691 2.65247,4.94416 4.226193,9.85943 0.772272,2.41207 1.442326,4.44891 1.488588,4.52654 0.04631,0.0777 3.601686,0.11986 7.901329,0.0932 l 7.817749,-0.0486 0.97247,-2.17186 c 2.02314,-4.51886 3.43018,-9.00282 4.15123,-13.22864 0.48182,-2.82392 0.74131,-12.16177 0.38494,-13.85466 -0.46786,-2.22245 -2.39785,-3.49991 -4.89375,-3.23904 -1.00499,0.10505 -1.12971,0.0769 -1.444024,-0.32263 -0.189214,-0.24055 -0.779496,-0.62444 -1.311823,-0.85344 -0.961603,-0.41367 -2.270485,-0.44995 -3.684751,-0.10232 -0.380064,0.0934 -0.519252,0.0143 -0.771899,-0.43812 -0.169592,-0.30367 -0.66435,-0.78775 -1.099596,-1.07579 -0.663458,-0.43906 -1.026311,-0.53469 -2.243267,-0.59007 l -1.451618,-0.0659 v -2.31823 c 0,-0.73349 -0.0764,-1.4438 -0.220323,-1.92417 -0.293627,-0.98003 -1.527519,-2.22408 -2.491446,-2.51171 -0.597515,-0.1783 -1.184337,-0.25048 -1.740324,-0.2259 z"
+      fill="#fdfbf7"
+      stroke="#111111"
+      stroke-width="1.2"
+    />
+    <!-- 2. Hand outline and interior creases -->
+    <path
+      d="m 84.832639,172.71912 c -0.04725,-0.0792 -0.730592,-2.15755 -1.518525,-4.61853 -1.605634,-5.01493 -2.338285,-6.72414 -4.312,-10.05952 -1.407106,-2.37787 -2.215693,-3.564 -4.404928,-6.46163 -1.491307,-1.97387 -1.909154,-2.74113 -2.290838,-4.20651 -0.597404,-2.2936 0.299704,-4.32971 2.296911,-5.21317 1.58251,-0.70002 3.019293,-0.18137 5.202239,1.87791 l 1.345981,1.26973 -0.114931,-2.93061 c -0.06321,-1.61184 -0.225181,-3.55748 -0.225181,-6.99396 0,-1.69864 -0.07158,-3.01836 0.194961,-3.75997 0.771639,-2.14697 3.036022,-3.14814 5.474512,-2.42049 0.98347,0.29347 2.24225,1.56239 2.54183,2.56229 0.14684,0.49011 0.2251,1.21528 0.2251,1.96364 v 2.36489 l 1.48098,0.0674 c 1.24163,0.0565 1.61147,0.15373 2.28838,0.60169 0.44407,0.29388 0.94898,0.78782 1.12201,1.09765 0.25777,0.46156 0.40011,0.54231 0.78788,0.447 1.44294,-0.35468 2.77801,-0.31757 3.75911,0.10448 0.54312,0.23365 1.14544,0.62561 1.33849,0.87104 0.32069,0.4077 0.4479,0.4361 1.47327,0.32892 2.54651,-0.26616 4.51563,1.03711 4.99297,3.30462 0.3636,1.72721 0.0989,11.25468 -0.39269,14.13586 -0.73567,4.31149 -2.17123,8.88606 -4.23539,13.49654 l -0.99214,2.21604 -7.97604,0.0494 c -4.38682,0.0272 -8.014705,-0.0154 -8.061961,-0.0947 z M 100.5139,169.7828 c 1.11322,-2.42292 2.52364,-6.426 3.21826,-9.13411 1.01575,-3.96012 1.20661,-5.7889 1.26784,-12.14869 0.0532,-5.52435 0.0421,-5.72981 -0.33707,-6.24717 -0.50852,-0.69383 -1.5105,-1.19687 -2.38474,-1.19724 -1.3465,-5.7e-4 -1.29331,-0.15711 -1.29331,3.80612 v 3.5766 h -0.75724 -0.75723 v -3.7716 -3.7716 l -0.57529,-0.57529 c -0.64374,-0.64374 -1.50088,-0.87161 -2.74932,-0.73089 -1.41689,0.15971 -1.40809,0.13502 -1.40809,3.95055 v 3.38437 h -0.75723 -0.75724 v -3.99004 -3.99003 l -0.53801,-0.53801 c -0.66294,-0.66295 -1.95995,-1.04569 -2.76368,-0.81555 l -0.57912,0.16582 -0.0947,3.58689 -0.0947,3.58688 -0.66258,0.003 -0.66258,0.003 -0.0947,-9.12042 c -0.0918,-3.1774 -0.10631,-3.61609 -0.48673,-4.1345 -1.25038,-1.70392 -3.86267,-1.54359 -4.672327,0.28677 -0.369128,0.83448 -0.255037,1.30867 -0.145374,6.76428 0.126434,6.2899 0.198963,11.46709 0.161178,11.50488 -0.03778,0.0378 -0.564485,-0.74098 -1.170445,-1.73058 -2.011153,-3.28444 -4.422459,-5.37395 -5.884959,-5.09958 -0.85337,0.16009 -1.552102,0.85481 -1.805232,1.79486 -0.398032,1.47818 0.164999,2.98906 2.035995,5.46355 4.986068,6.59432 6.934068,10.18946 8.845662,16.32514 0.600117,1.92621 1.162662,3.69387 1.250102,3.92814 l 0.15898,0.42595 h 6.88809 6.88809 z"
+      fill="#111111"
+    />
+    <!-- 3. Active Bead circle: DRAWN ON TOP of hand so hand outline never covers it! -->
+    <!-- Bead dark boundary for high contrast -->
+    <circle
+      cx="73.986916"
+      cy="135.38283"
+      r="7.5"
+      fill="#111111"
+    />
+    <!-- Bead colored body -->
+    <circle
+      cx="73.986916"
+      cy="135.38283"
+      r="6.8"
+      fill="${safeColor}"
+    />
+    <!-- Specular highlight on bead -->
+    <ellipse
+      cx="71.8"
+      cy="133.0"
+      rx="2.2"
+      ry="1.8"
+      fill="#ffffff"
+      fill-opacity="0.88"
+    />
+  </g>
+</svg>`;
+
+  const base64 = typeof window !== 'undefined' ? window.btoa(svg) : Buffer.from(svg).toString('base64');
+  return `url("data:image/svg+xml;base64,${base64}") 7 7, crosshair`;
+}
+
+/**
+ * Generates an SVG Data URI for CSS Eraser cursor with active radius indicator
+ */
+export function getEraserCursor(radius: number = 1): string {
+  const safeRadius = Math.max(1, Math.min(8, Math.round(radius)));
+
+  // 32x32 SVG angled block eraser with tip at (3, 27) and radius badge at top-right
+  const badge = `
+    <circle cx="23" cy="9" r="6.5" fill="#ef4444" stroke="#ffffff" stroke-width="1.2"/>
+    <text x="23" y="12.2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="8.5" font-weight="bold" fill="#ffffff" text-anchor="middle">${safeRadius}</text>
+  `;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <filter id="er-shadow" x="-20%" y="-20%" width="150%" height="150%">
+      <feDropShadow dx="0.5" dy="1" stdDeviation="0.8" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+  <g filter="url(#er-shadow)">
+    <!-- White paper sleeve wrapper -->
+    <path d="M7 21 L16 12 L20 16 L11 25 Z" fill="#e5e7eb" stroke="#1c1917" stroke-width="1.2" stroke-linejoin="round"/>
+    <!-- Pink rubber body -->
+    <path d="M16 12 L20 8 C21 7 22.5 7 23.5 8 L24 8.5 C25 9.5 25 11 24 12 L20 16 Z" fill="#f472b6" stroke="#1c1917" stroke-width="1.2" stroke-linejoin="round"/>
+    <!-- Active eraser rubber tip pointing towards bottom-left (3, 27) -->
+    <path d="M3 25 L7 21 L11 25 L7 29 Z" fill="#ec4899" stroke="#1c1917" stroke-width="1.2" stroke-linejoin="round"/>
+    <line x1="7" y1="21" x2="11" y2="25" stroke="#be185d" stroke-width="0.8"/>
+    <!-- Radius Badge -->
+    ${badge}
+  </g>
+</svg>`;
+
+  const base64 = typeof window !== 'undefined' ? window.btoa(svg) : Buffer.from(svg).toString('base64');
+  // Hotspot at (4, 27) directly on the eraser's contact tip
+  return `url("data:image/svg+xml;base64,${base64}") 4 27, crosshair`;
+}
+
+/**
+ * Calculates all grid cells within a given bead radius from (centerCol, centerRow).
+ * Radius 1 = 1 bead (center cell only)
+ * Radius 2 = 9 beads (3x3 circular area)
+ * Radius 3 = 21 beads (5x5 circular area)
+ * Radius 4 = 37 beads (7x7 circular area)
+ * Radius 5 = 69 beads (9x9 circular area)
+ * Radius 6 = 97 beads (11x11 circular area)
+ */
+export function getCellsInRadius(
+  centerCol: number,
+  centerRow: number,
+  radius: number,
+  totalCols: number,
+  totalRows: number
+): { col: number; row: number }[] {
+  if (radius <= 1) {
+    if (centerCol >= 0 && centerCol < totalCols && centerRow >= 0 && centerRow < totalRows) {
+      return [{ col: centerCol, row: centerRow }];
+    }
+    return [];
+  }
+
+  const cells: { col: number; row: number }[] = [];
+  const maxR = radius - 1;
+  const thresholdSq = (radius - 0.5) * (radius - 0.5);
+
+  const minCol = Math.max(0, centerCol - maxR);
+  const maxCol = Math.min(totalCols - 1, centerCol + maxR);
+  const minRow = Math.max(0, centerRow - maxR);
+  const maxRow = Math.min(totalRows - 1, centerRow + maxR);
+
+  for (let r = minRow; r <= maxRow; r++) {
+    for (let c = minCol; c <= maxCol; c++) {
+      const dx = c - centerCol;
+      const dy = r - centerRow;
+      if (dx * dx + dy * dy <= thresholdSq) {
+        cells.push({ col: c, row: r });
+      }
+    }
+  }
+
+  return cells;
+}

@@ -20,6 +20,11 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
   const [rows, setRows] = useState(settings.rows);
   const [spacing, setSpacing] = useState(settings.cellSpacing);
   const [dotSize, setDotSize] = useState(settings.dotSize);
+  const [aspectRatio, setAspectRatio] = useState<'loom_delica' | 'square' | 'custom'>(
+    settings.aspectRatio || 'loom_delica'
+  );
+  const [physicalWidthCm, setPhysicalWidthCm] = useState(settings.physicalWidthCm || 5.7);
+  const [physicalHeightCm, setPhysicalHeightCm] = useState(settings.physicalHeightCm || 11.1);
   const [beadShape, setBeadShape] = useState<BeadShape>(settings.beadShape);
   const [beadFinish, setBeadFinish] = useState<BeadFinish>(settings.beadFinish);
   const [showCoordinates, setShowCoordinates] = useState(settings.showCoordinates);
@@ -28,8 +33,8 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
   );
   const [showGrid, setShowGrid] = useState(settings.showGrid);
   const [showEmptyDots, setShowEmptyDots] = useState(settings.showEmptyDots);
-  const [mmPerBead, setMmPerBead] = useState(settings.millimetresPerBead);
-  const [selectedStandard, setSelectedStandard] = useState(settings.beadTypeLabel);
+  const [mmPerBead, setMmPerBead] = useState(settings.millimetresPerBead || 1.5833);
+  const [selectedStandard, setSelectedStandard] = useState(settings.beadTypeLabel || 'Loom Standard (5.7cm × 11.1cm)');
   const [borderThickness, setBorderThickness] = useState(settings.edgeBorder.thickness);
   const [borderColor, setBorderColor] = useState(settings.edgeBorder.color);
 
@@ -45,19 +50,26 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const mmW = (physicalWidthCm * 10) / cols;
+    const mmH = (physicalHeightCm * 10) / rows;
+
     onSaveSettings({
       ...settings,
       columns: Math.max(4, Math.min(120, cols)),
       rows: Math.max(4, Math.min(160, rows)),
       cellSpacing: Math.max(4, Math.min(32, spacing)),
       dotSize: Math.max(2, Math.min(24, dotSize)),
+      aspectRatio,
+      physicalWidthCm,
+      physicalHeightCm,
       beadShape,
       beadFinish,
       showCoordinates,
       rowNumberingDirection,
       showGrid,
       showEmptyDots,
-      millimetresPerBead: mmPerBead,
+      millimetresPerBead: mmW,
+      millimetresPerRow: mmH,
       beadTypeLabel: selectedStandard,
       edgeBorder: {
         enabled: borderThickness > 0,
@@ -68,10 +80,12 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
     onClose();
   };
 
-  const estWidthMm = (cols * mmPerBead).toFixed(1);
-  const estHeightMm = (rows * mmPerBead).toFixed(1);
-  const estWidthIn = ((cols * mmPerBead) / 25.4).toFixed(2);
-  const estHeightIn = ((rows * mmPerBead) / 25.4).toFixed(2);
+  const estWidthMm = (physicalWidthCm * 10).toFixed(1);
+  const estHeightMm = (physicalHeightCm * 10).toFixed(1);
+  const estWidthIn = ((physicalWidthCm * 10) / 25.4).toFixed(2);
+  const estHeightIn = ((physicalHeightCm * 10) / 25.4).toFixed(2);
+  const beadPitchW = ((physicalWidthCm * 10) / cols).toFixed(2);
+  const beadPitchH = ((physicalHeightCm * 10) / rows).toFixed(2);
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -140,16 +154,70 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
             <div className="pt-1">
               <span className="text-[11px] text-[#a3978a] font-medium block mb-1.5 flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-[#e87524]" />
-                Physical Canvas Proportions (6cm × 11cm Aspect Ratio 6:11):
+                Template & Physical Loom Presets:
               </span>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCols(36);
+                    setRows(49);
+                    setPhysicalWidthCm(5.7);
+                    setPhysicalHeightCm(11.1);
+                    setAspectRatio('loom_delica');
+                    setSelectedStandard('Loom Standard (5.7cm × 11.1cm)');
+                  }}
+                  className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
+                    cols === 36 && rows === 49 && aspectRatio === 'loom_delica'
+                      ? 'border-[#e87524] bg-[#e87524]/15 text-[#f8f3eb] ring-1 ring-[#e87524]'
+                      : 'border-[#2e2722] bg-[#171412] text-[#ded5c9] hover:border-[#483d35]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">36 × 49 (5.7 × 11.1 cm)</span>
+                    {cols === 36 && rows === 49 && aspectRatio === 'loom_delica' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#e87524]" />
+                    )}
+                  </div>
+                  <span className="text-[10px] text-[#a3978a]">
+                    Default Template · Loom Ratio 5.7:11.1
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCols(36);
+                    setRows(49);
+                    setAspectRatio('square');
+                    setSelectedStandard('Square Grid 1:1');
+                  }}
+                  className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
+                    cols === 36 && rows === 49 && aspectRatio === 'square'
+                      ? 'border-[#e87524] bg-[#e87524]/15 text-[#f8f3eb] ring-1 ring-[#e87524]'
+                      : 'border-[#2e2722] bg-[#171412] text-[#ded5c9] hover:border-[#483d35]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">36 × 49 (Square Grid)</span>
+                    {cols === 36 && rows === 49 && aspectRatio === 'square' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#e87524]" />
+                    )}
+                  </div>
+                  <span className="text-[10px] text-[#a3978a]">
+                    1:1 Square Pixel Grid (1,764 beads)
+                  </span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
                     setCols(34);
                     setRows(62);
-                    setMmPerBead(1.76);
-                    setSelectedStandard('Siroma Tapestry 6cm × 11cm (34×62)');
+                    setPhysicalWidthCm(6.0);
+                    setPhysicalHeightCm(11.0);
+                    setAspectRatio('loom_delica');
+                    setSelectedStandard('Siroma Tapestry 6cm × 11cm');
                   }}
                   className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
                     cols === 34 && rows === 62
@@ -158,63 +226,13 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">34 × 62 (Exact 6×11cm)</span>
+                    <span className="text-xs font-semibold">34 × 62 (6 × 11 cm)</span>
                     {cols === 34 && rows === 62 && (
                       <span className="w-1.5 h-1.5 rounded-full bg-[#e87524]" />
                     )}
                   </div>
                   <span className="text-[10px] text-[#a3978a]">
-                    Matches physical piece @ 1.76mm
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCols(37);
-                    setRows(68);
-                    setMmPerBead(1.6);
-                    setSelectedStandard('Miyuki Delica 11/0 (Cylinder)');
-                  }}
-                  className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
-                    cols === 37 && rows === 68
-                      ? 'border-[#e87524] bg-[#e87524]/15 text-[#f8f3eb] ring-1 ring-[#e87524]'
-                      : 'border-[#2e2722] bg-[#171412] text-[#ded5c9] hover:border-[#483d35]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">37 × 68 (Miyuki 11/0)</span>
-                    {cols === 37 && rows === 68 && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#e87524]" />
-                    )}
-                  </div>
-                  <span className="text-[10px] text-[#a3978a]">
-                    59.2 × 108.8 mm (1.6mm Delica)
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCols(28);
-                    setRows(52);
-                    setMmPerBead(2.1);
-                    setSelectedStandard('Round Seed Bead 11/0 (Czech)');
-                  }}
-                  className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
-                    cols === 28 && rows === 52
-                      ? 'border-[#e87524] bg-[#e87524]/15 text-[#f8f3eb] ring-1 ring-[#e87524]'
-                      : 'border-[#2e2722] bg-[#171412] text-[#ded5c9] hover:border-[#483d35]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">28 × 52 (Czech 11/0)</span>
-                    {cols === 28 && rows === 52 && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#e87524]" />
-                    )}
-                  </div>
-                  <span className="text-[10px] text-[#a3978a]">
-                    58.8 × 109.2 mm (2.1mm Seed)
+                    Traditional 6cm × 11cm Tapestry
                   </span>
                 </button>
               </div>
@@ -223,7 +241,7 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
             <p className="text-[11px] text-[#71675f]">
               Total beads capacity: <span className="font-mono-numbers font-medium text-[#ded5c9]">{(cols * rows).toLocaleString()} beads</span>
               {' · '}
-              Aspect ratio: <span className="font-mono-numbers font-medium text-[#ded5c9]">{(cols / rows).toFixed(3)} (Target: {(6 / 11).toFixed(3)})</span>
+              Physical Ratio: <span className="font-mono-numbers font-medium text-[#ded5c9]">{physicalWidthCm}cm / {physicalHeightCm}cm ({(physicalWidthCm / physicalHeightCm).toFixed(3)})</span>
             </p>
           </div>
 
@@ -232,20 +250,67 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[#e87524] flex items-center gap-1.5">
                 <Ruler className="w-3.5 h-3.5" />
-                <span>Physical Translation & Bead Standard</span>
+                <span>Physical Translation & Loom Geometry</span>
               </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-[#ded5c9] mb-1">
-                  Standard Bead Specification
+                  Physical Finished Width (cm)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min={1}
+                  max={100}
+                  value={physicalWidthCm}
+                  onChange={(e) => setPhysicalWidthCm(parseFloat(e.target.value) || 5.7)}
+                  className="w-full px-3 py-2 bg-[#171412] border border-[#2e2722] rounded-lg text-[#f8f3eb] font-mono-numbers focus:border-[#e87524] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#ded5c9] mb-1">
+                  Physical Finished Height (cm)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min={1}
+                  max={200}
+                  value={physicalHeightCm}
+                  onChange={(e) => setPhysicalHeightCm(parseFloat(e.target.value) || 11.1)}
+                  className="w-full px-3 py-2 bg-[#171412] border border-[#2e2722] rounded-lg text-[#f8f3eb] font-mono-numbers focus:border-[#e87524] outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-[#ded5c9] mb-1">
+                  Aspect Ratio Model
+                </label>
+                <select
+                  value={aspectRatio}
+                  onChange={(e) => setAspectRatio(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-[#171412] border border-[#2e2722] rounded-lg text-xs text-[#f8f3eb] focus:border-[#e87524] outline-none"
+                >
+                  <option value="loom_delica">Calibrated Loom Pitch ({physicalWidthCm}cm × {physicalHeightCm}cm)</option>
+                  <option value="square">Uniform Square Grid (1:1)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#ded5c9] mb-1">
+                  Preset Bead Standard
                 </label>
                 <select
                   value={selectedStandard}
                   onChange={(e) => handleStandardChange(e.target.value)}
                   className="w-full px-3 py-2 bg-[#171412] border border-[#2e2722] rounded-lg text-xs text-[#f8f3eb] focus:border-[#e87524] outline-none"
                 >
+                  <option value="Loom Standard (5.7cm × 11.1cm)">Loom Standard (5.7cm × 11.1cm)</option>
                   {BEAD_STANDARDS.map((s) => (
                     <option key={s.name} value={s.name}>
                       {s.name} ({s.mm}mm)
@@ -253,37 +318,25 @@ export const CanvasSettingsModal: React.FC<CanvasSettingsModalProps> = ({
                   ))}
                 </select>
               </div>
-
-              <div>
-                <label className="block text-xs font-medium text-[#ded5c9] mb-1">
-                  Millimetres per Bead (mm)
-                </label>
-                <input
-                  type="number"
-                  step="0.05"
-                  min={0.5}
-                  max={30}
-                  value={mmPerBead}
-                  onChange={(e) => setMmPerBead(parseFloat(e.target.value) || 1.6)}
-                  className="w-full px-3 py-2 bg-[#171412] border border-[#2e2722] rounded-lg text-[#f8f3eb] font-mono-numbers focus:border-[#e87524] outline-none"
-                />
-              </div>
             </div>
 
             {/* Calculated Physical Dimensions card */}
             <div className="p-3 bg-[#171412] border border-[#2e2722] rounded-lg flex items-center justify-between">
               <div>
-                <span className="text-[11px] text-[#a3978a] block">Calculated Finished Object Size</span>
+                <span className="text-[11px] text-[#a3978a] block">Finished Piece Dimensions</span>
                 <span className="text-sm font-semibold text-[#f8f3eb] font-mono-numbers">
-                  {estWidthMm} × {estHeightMm} mm
+                  {physicalWidthCm.toFixed(1)} × {physicalHeightCm.toFixed(1)} cm
                 </span>
                 <span className="text-xs text-[#71675f] font-mono-numbers ml-2">
-                  ({estWidthIn}″ × {estHeightIn}″)
+                  ({estWidthMm} × {estHeightMm} mm · {estWidthIn}″ × {estHeightIn}″)
                 </span>
               </div>
-              <span className="text-[11px] text-[#a3978a] bg-[#1f1b18] px-2 py-1 rounded border border-[#2e2722]">
-                1:{((mmPerBead * 10) / 10).toFixed(1)} Scale
-              </span>
+              <div className="text-right">
+                <span className="text-[10px] text-[#a3978a] block">Per-Bead Pitch</span>
+                <span className="text-xs font-mono-numbers font-medium text-[#e87524]">
+                  {beadPitchW}mm (W) × {beadPitchH}mm (H)
+                </span>
+              </div>
             </div>
           </div>
 

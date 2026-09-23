@@ -18,11 +18,13 @@ export type RowNumberingDirection = 'bottom-to-top' | 'top-to-bottom';
 export interface CanvasSettings {
   columns: number; // 4 to 120 (default 36)
   rows: number; // 4 to 160 (default 49)
-  cellSpacing: number; // 4 to 32 (default 12)
-  dotSize: number; // 2 to 24 (default 8)
+  cellSpacing: number; // base cell spacing in pixels (default 12)
+  dotSize: number; // 2 to 24 (default 9)
   beadShape: BeadShape;
   beadFinish: BeadFinish;
-  aspectRatio: 'square';
+  aspectRatio: 'loom_delica' | 'square' | 'custom';
+  physicalWidthCm: number; // default 5.7
+  physicalHeightCm: number; // default 11.1
   orientation: 'portrait' | 'landscape';
   edgeBorder: {
     enabled: boolean;
@@ -33,7 +35,8 @@ export interface CanvasSettings {
   rowNumberingDirection: RowNumberingDirection; // 'bottom-to-top' (traditional loom) or 'top-to-bottom'
   showGrid: boolean;
   showEmptyDots: boolean;
-  millimetresPerBead: number; // default 1.6 (Miyuki Delica 11/0 standard)
+  millimetresPerBead: number; // default 1.5833 (57mm / 36 beads)
+  millimetresPerRow: number; // default 2.2653 (111mm / 49 rows)
   beadTypeLabel: string;
 }
 

@@ -35,7 +35,16 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEY_LIBRARY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // If the saved library has outdated presets with old dimensions, update the presets to new standard
+          return parsed.map((item: DesignDocument) => {
+            const matchingPreset = PRESET_DESIGNS.find((p) => p.id === item.id);
+            if (matchingPreset && (item.settings.columns !== matchingPreset.settings.columns || item.settings.rows !== matchingPreset.settings.rows)) {
+              return matchingPreset;
+            }
+            return item;
+          });
+        }
       }
     } catch {
       // fallback
@@ -52,6 +61,11 @@ export default function App() {
         if (parsed?.settings && parsed?.cells) {
           if (!parsed.settings.rowNumberingDirection) {
             parsed.settings.rowNumberingDirection = 'bottom-to-top';
+          }
+          // If this was an untouched preset, sync its dimensions to calibrated 34x62
+          const matchingPreset = PRESET_DESIGNS.find((p) => p.id === parsed.id);
+          if (matchingPreset && (parsed.settings.columns !== matchingPreset.settings.columns || parsed.settings.rows !== matchingPreset.settings.rows)) {
+            return matchingPreset;
           }
           return parsed;
         }
@@ -73,6 +87,7 @@ export default function App() {
     return design.palette[0]?.hex || '#f28c28';
   });
   const [currentTool, setCurrentTool] = useState<ToolMode>('paint');
+  const [eraserRadius, setEraserRadius] = useState<number>(1);
   const [mirrorMode, setMirrorMode] = useState<MirrorMode>('none');
   const [zoom, setZoom] = useState<number>(1.0);
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
@@ -299,12 +314,28 @@ export default function App() {
         case '0':
           setZoom(1.0);
           break;
+        case '[':
+          setEraserRadius((r) => Math.max(1, r - 1));
+          break;
+        case ']':
+          setEraserRadius((r) => Math.min(6, r + 1));
+          break;
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+          if (currentTool === 'erase') {
+            setEraserRadius(parseInt(e.key, 10));
+          }
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, mirrorMode]);
+  }, [handleUndo, handleRedo, mirrorMode, currentTool]);
 
   // Palette modifications
   const handleAddPaletteColor = (hex: string) => {
@@ -548,6 +579,9 @@ export default function App() {
         <Toolbar
           currentTool={currentTool}
           onSelectTool={setCurrentTool}
+          activeColor={activeColor}
+          eraserRadius={eraserRadius}
+          onChangeEraserRadius={setEraserRadius}
           mirrorMode={mirrorMode}
           onChangeMirrorMode={setMirrorMode}
           canUndo={historyIndex > 0}
@@ -580,6 +614,8 @@ export default function App() {
             settings={design.settings}
             activeColor={activeColor}
             currentTool={currentTool}
+            eraserRadius={eraserRadius}
+            onChangeEraserRadius={setEraserRadius}
             mirrorMode={mirrorMode}
             referenceImage={referenceImage}
             zoom={zoom}
@@ -653,6 +689,7 @@ export default function App() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         design={design}
+        onOpenPrint={() => setIsPrintOpen(true)}
       />
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />

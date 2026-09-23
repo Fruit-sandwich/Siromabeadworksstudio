@@ -82,8 +82,10 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </h3>
             <div className="border border-[#2e2722] rounded-lg overflow-hidden divide-y divide-[#2e2722] bg-[#171412]">
               {[
-                { key: 'B / P', desc: 'Bead Pen / Paint tool' },
+                { key: 'B / P', desc: 'Drop Bead (hand pinch placement)' },
                 { key: 'E', desc: 'Eraser tool' },
+                { key: '[ / ]', desc: 'Decrease / Increase Eraser Radius' },
+                { key: '1 - 6', desc: 'Quick set Eraser Radius (in Eraser mode)' },
                 { key: 'I', desc: 'Eyedropper (sample color)' },
                 { key: 'G', desc: 'Bucket Fill (flood fill)' },
                 { key: 'L', desc: 'Line Ruler (straight bead lines)' },

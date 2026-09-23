@@ -3,13 +3,15 @@ import { buildPaletteColors, PALETTE_PRESETS } from '../utils/colorUtils';
 import { createJaguarLoomCells, JAGUAR_COLS, JAGUAR_ROWS } from './jaguarPattern';
 
 export const DEFAULT_SETTINGS: CanvasSettings = {
-  columns: 34,
-  rows: 62,
-  cellSpacing: 11,
-  dotSize: 8,
+  columns: 36,
+  rows: 49,
+  cellSpacing: 12,
+  dotSize: 9,
   beadShape: 'circle',
   beadFinish: 'glossy',
-  aspectRatio: 'square',
+  aspectRatio: 'loom_delica',
+  physicalWidthCm: 5.7,
+  physicalHeightCm: 11.1,
   orientation: 'portrait',
   edgeBorder: {
     enabled: true,
@@ -20,8 +22,9 @@ export const DEFAULT_SETTINGS: CanvasSettings = {
   rowNumberingDirection: 'bottom-to-top',
   showGrid: true,
   showEmptyDots: true,
-  millimetresPerBead: 1.76,
-  beadTypeLabel: 'Miyuki / Preciosa (6cm × 11cm canvas)',
+  millimetresPerBead: 1.5833, // 57mm / 36
+  millimetresPerRow: 2.2653, // 111mm / 49
+  beadTypeLabel: 'Loom Standard (5.7cm × 11.1cm)',
 };
 
 /**
@@ -150,7 +153,7 @@ export const PRESET_DESIGNS: DesignDocument[] = [
       title: 'Jaguar Loom Tapestry',
       author: 'Siroma Beadworks Studio',
       description: 'The signature Siroma artisan tapestry featuring a watchful jaguar motif with emerald gaze, black rosettes, and white loom fringe borders.',
-      materialsNotes: 'Preciosa Ornela / Miyuki 11/0 seed beads in Amber Orange (#ea6a1a), Jet Black (#111111), Alabaster White (#f4eee4), and Emerald Green (#2a8742). Woven on a traditional bead loom.',
+      materialsNotes: 'Miyuki 11/0 / Preciosa beads in Amber Orange (#ea6a1a), Jet Black (#111111), Alabaster White (#f4eee4), and Emerald Green (#2a8742). Calibrated to 5.7cm × 11.1cm on 36×49 loom.',
       createdAt: '2026-09-22T16:00:00.000Z',
       updatedAt: '2026-09-22T16:00:00.000Z',
       appVersion: '0.1.0',
@@ -170,7 +173,7 @@ export const PRESET_DESIGNS: DesignDocument[] = [
       title: 'Desert Sunburst Medallion',
       author: 'Studio Artisan',
       description: 'A stepped diamond medallion inspired by traditional Southwestern loom beadwork using warm earth tones.',
-      materialsNotes: 'Miyuki Delica 11/0 cylinder glass beads, FireLine 6lb smoke thread, loom or peyote stitch.',
+      materialsNotes: 'Miyuki Delica 11/0 beads, calibrated for 5.7cm × 11.1cm tapestry loom.',
       createdAt: '2026-09-22T12:00:00.000Z',
       updatedAt: '2026-09-22T12:00:00.000Z',
       appVersion: '0.1.0',
@@ -190,7 +193,7 @@ export const PRESET_DESIGNS: DesignDocument[] = [
       title: 'Cobalt & Scarlet Chevron Belt',
       author: 'Master Weaver',
       description: 'High-contrast geometric chevron tapestry in classic primary beadwork enamels.',
-      materialsNotes: 'Toho 11/0 round seed beads, Nymo D bonded nylon thread.',
+      materialsNotes: 'Preciosa / Toho 11/0 seed beads, calibrated for 5.7cm × 11.1cm tapestry loom.',
       createdAt: '2026-09-22T13:00:00.000Z',
       updatedAt: '2026-09-22T13:00:00.000Z',
       appVersion: '0.1.0',
@@ -209,7 +212,7 @@ export const PRESET_DESIGNS: DesignDocument[] = [
     metadata: {
       title: 'Untitled Beadwork Canvas',
       author: 'Independent Maker',
-      description: 'Fresh blank bead canvas ready for your custom sketching.',
+      description: 'Fresh blank bead canvas calibrated to standard 5.7cm × 11.1cm loom template (36 × 49 beads).',
       materialsNotes: 'Configurable bead count and physical dimensions.',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

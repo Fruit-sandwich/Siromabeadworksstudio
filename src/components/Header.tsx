@@ -34,9 +34,11 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onOpenHelp,
 }) => {
-  const { columns, rows, millimetresPerBead } = design.settings;
-  const widthMm = (columns * millimetresPerBead).toFixed(1);
-  const heightMm = (rows * millimetresPerBead).toFixed(1);
+  const { columns, rows, millimetresPerBead, millimetresPerRow, physicalWidthCm, physicalHeightCm } = design.settings;
+  const widthMm = (physicalWidthCm ? physicalWidthCm * 10 : columns * (millimetresPerBead || 1.5833)).toFixed(1);
+  const heightMm = (physicalHeightCm ? physicalHeightCm * 10 : rows * (millimetresPerRow || 2.2653)).toFixed(1);
+  const widthCm = (parseFloat(widthMm) / 10).toFixed(1);
+  const heightCm = (parseFloat(heightMm) / 10).toFixed(1);
 
   return (
     <header className="h-14 bg-[#1f1b18] border-b border-[#2e2722] px-4 flex items-center justify-between shrink-0 z-30 select-none">
@@ -66,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="font-mono-numbers hover:text-[#e87524] transition-colors"
             title="Click to calibrate physical canvas size & aspect ratio"
           >
-            {columns} × {rows} beads ({widthMm} × {heightMm} mm)
+            {columns} × {rows} beads ({widthCm} × {heightCm} cm)
           </button>
           <span aria-hidden="true" className="text-[#574b43]">·</span>
           <span className="text-[#ded5c9]">{validation.beadCount.toLocaleString()} placed</span>

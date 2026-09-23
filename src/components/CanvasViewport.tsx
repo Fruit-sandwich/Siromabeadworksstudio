@@ -1,16 +1,20 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   ToolMode,
   MirrorMode,
   CanvasSettings,
   ReferenceImage,
 } from '../types/bead';
+import { getBeadHandCursor, getEraserCursor, getCellsInRadius } from '../utils/cursorUtils';
+import { Eraser } from 'lucide-react';
 
 interface CanvasViewportProps {
   cells: (string | null)[];
   settings: CanvasSettings;
   activeColor: string;
   currentTool: ToolMode;
+  eraserRadius?: number;
+  onChangeEraserRadius?: (radius: number) => void;
   mirrorMode: MirrorMode;
   referenceImage: ReferenceImage | null;
   zoom: number;
@@ -24,6 +28,8 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   settings,
   activeColor,
   currentTool,
+  eraserRadius = 1,
+  onChangeEraserRadius,
   mirrorMode,
   referenceImage,
   zoom,
@@ -45,6 +51,46 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   const lastCellRef = useRef<{ col: number; row: number } | null>(null);
   const lineStartCellRef = useRef<{ col: number; row: number } | null>(null);
   const [hoverCell, setHoverCell] = useState<{ col: number; row: number } | null>(null);
+  const hoverCellRef = useRef<{ col: number; row: number } | null>(null);
+
+  // Physical Loom Aspect Ratio Calibration:
+  // For 36*49 beads with physical ratio 5.7/11.1 cm:
+  // Width pitch = 5.7cm / 36 = 1.5833 mm
+  // Height pitch = 11.1cm / 49 = 2.2653 mm
+  // Row/Col pitch ratio = (11.1/49) / (5.7/36) = 1.4307196...
+  const { cellSpacingX, cellSpacingY, rowToColRatio } = useMemo(() => {
+    if (settings.aspectRatio === 'square') {
+      return {
+        cellSpacingX: settings.cellSpacing,
+        cellSpacingY: settings.cellSpacing,
+        rowToColRatio: 1.0,
+      };
+    }
+
+    const mmPerCol = settings.physicalWidthCm && settings.columns
+      ? (settings.physicalWidthCm * 10) / settings.columns
+      : (settings.millimetresPerBead || 1.5833);
+
+    const mmPerRow = settings.physicalHeightCm && settings.rows
+      ? (settings.physicalHeightCm * 10) / settings.rows
+      : (settings.millimetresPerRow || 2.2653);
+
+    const ratio = mmPerRow / mmPerCol;
+    return {
+      cellSpacingX: settings.cellSpacing,
+      cellSpacingY: settings.cellSpacing * ratio,
+      rowToColRatio: ratio,
+    };
+  }, [
+    settings.aspectRatio,
+    settings.cellSpacing,
+    settings.physicalWidthCm,
+    settings.physicalHeightCm,
+    settings.millimetresPerBead,
+    settings.millimetresPerRow,
+    settings.columns,
+    settings.rows,
+  ]);
 
   // Loaded reference image element
   const [refImageElement, setRefImageElement] = useState<HTMLImageElement | null>(null);
@@ -65,13 +111,13 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
-    const canvasWidth = settings.columns * settings.cellSpacing;
-    const canvasHeight = settings.rows * settings.cellSpacing;
+    const canvasWidth = settings.columns * cellSpacingX;
+    const canvasHeight = settings.rows * cellSpacingY;
 
     const initialX = Math.max(20, (container.clientWidth - canvasWidth * zoom) / 2);
     const initialY = Math.max(20, (container.clientHeight - canvasHeight * zoom) / 2);
     setPan({ x: initialX, y: initialY });
-  }, [settings.columns, settings.rows, settings.cellSpacing]);
+  }, [settings.columns, settings.rows, cellSpacingX, cellSpacingY]);
 
   // Transform screen coordinate to canvas cell (col, row)
   const screenToCell = useCallback(
@@ -84,15 +130,15 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       const canvasX = localX / zoom;
       const canvasY = localY / zoom;
 
-      const col = Math.floor(canvasX / settings.cellSpacing);
-      const row = Math.floor(canvasY / settings.cellSpacing);
+      const col = Math.floor(canvasX / cellSpacingX);
+      const row = Math.floor(canvasY / cellSpacingY);
 
       if (col >= 0 && col < settings.columns && row >= 0 && row < settings.rows) {
         return { col, row };
       }
       return null;
     },
-    [pan.x, pan.y, zoom, settings.cellSpacing, settings.columns, settings.rows]
+    [pan.x, pan.y, zoom, cellSpacingX, cellSpacingY, settings.columns, settings.rows]
   );
 
   // Helper to compute mirrored cell coordinates based on mirrorMode
@@ -220,9 +266,9 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     ctx.translate(pan.x, pan.y);
     ctx.scale(zoom, zoom);
 
-    const { columns, rows, cellSpacing, dotSize, beadShape, beadFinish, edgeBorder } = settings;
-    const canvasW = columns * cellSpacing;
-    const canvasH = rows * cellSpacing;
+    const { columns, rows, dotSize, beadShape, beadFinish, edgeBorder } = settings;
+    const canvasW = columns * cellSpacingX;
+    const canvasH = rows * cellSpacingY;
 
     // 1. Linen Canvas Background
     ctx.fillStyle = '#f4eee4';
@@ -246,12 +292,12 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       ctx.lineWidth = 1 / zoom;
       ctx.beginPath();
       for (let c = 0; c <= columns; c++) {
-        const x = c * cellSpacing;
+        const x = c * cellSpacingX;
         ctx.moveTo(x, 0);
         ctx.lineTo(x, canvasH);
       }
       for (let r = 0; r <= rows; r++) {
-        const y = r * cellSpacing;
+        const y = r * cellSpacingY;
         ctx.moveTo(0, y);
         ctx.lineTo(canvasW, y);
       }
@@ -262,12 +308,12 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       ctx.lineWidth = 1.5 / zoom;
       ctx.beginPath();
       for (let c = 0; c <= columns; c += 5) {
-        const x = c * cellSpacing;
+        const x = c * cellSpacingX;
         ctx.moveTo(x, 0);
         ctx.lineTo(x, canvasH);
       }
       for (let r = 0; r <= rows; r += 5) {
-        const y = r * cellSpacing;
+        const y = r * cellSpacingY;
         ctx.moveTo(0, y);
         ctx.lineTo(canvasW, y);
       }
@@ -281,28 +327,26 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       ctx.strokeRect(0, 0, canvasW, canvasH);
     }
 
-    // 5. Draw Beads & Guide Dots
+    // 5. Draw Beads & Guide Dots (High-performance rendering loop)
     const radius = dotSize / 2;
+    const rx = radius * 0.94;
+    const ry = radius * rowToColRatio * 0.94;
+    const holeRx = Math.max(0.75, rx * 0.2);
+    const holeRy = Math.max(0.9, ry * 0.22);
 
     for (let r = 0; r < rows; r++) {
+      const cy = r * cellSpacingY + cellSpacingY / 2;
+      const rowOffset = r * columns;
+
       for (let c = 0; c < columns; c++) {
-        const idx = r * columns + c;
-        const color = cells[idx];
-        const cx = c * cellSpacing + cellSpacing / 2;
-        const cy = r * cellSpacing + cellSpacing / 2;
+        const color = cells[rowOffset + c];
+        const cx = c * cellSpacingX + cellSpacingX / 2;
 
         if (color) {
-          ctx.save();
-
           if (beadShape === 'circle') {
-            // Seed bead on a loom: slightly oval / vertically elongated (aspect ratio ~1.14:1)
-            // matching authentic physical glass seed bead weave tension
-            const radiusX = radius * 0.94;
-            const radiusY = radius * 1.08;
-
-            // Bead base ellipse
+            // Seed bead on a loom: slightly oval / vertically elongated matching authentic loom tension
             ctx.beginPath();
-            ctx.ellipse(cx, cy, radiusX, radiusY, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
             ctx.fillStyle = color;
             ctx.fill();
 
@@ -311,47 +355,27 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
             ctx.lineWidth = 0.5;
             ctx.stroke();
 
-            // Tactile highlight (glossy specular reflection on curved glass bead surface)
+            // Tactile highlight: fast specular sheen without creating heap gradient objects
             if (beadFinish === 'glossy') {
-              const shineGrad = ctx.createRadialGradient(
-                cx - radiusX * 0.32,
-                cy - radiusY * 0.32,
-                radiusX * 0.08,
-                cx,
-                cy,
-                radiusY
-              );
-              shineGrad.addColorStop(0, 'rgba(255, 255, 255, 0.68)');
-              shineGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.06)');
-              shineGrad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
-
               ctx.beginPath();
-              ctx.ellipse(cx, cy, radiusX, radiusY, 0, 0, Math.PI * 2);
-              ctx.fillStyle = shineGrad;
+              ctx.ellipse(cx - rx * 0.32, cy - ry * 0.32, rx * 0.32, ry * 0.28, 0, 0, Math.PI * 2);
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
               ctx.fill();
             }
 
-            // Authentic bead thread hole (slightly vertically elongated along warp thread path)
+            // Authentic bead thread hole along vertical warp path
             ctx.beginPath();
-            ctx.ellipse(
-              cx,
-              cy,
-              Math.max(0.75, radiusX * 0.2),
-              Math.max(0.9, radiusY * 0.24),
-              0,
-              0,
-              Math.PI * 2
-            );
+            ctx.ellipse(cx, cy, holeRx, holeRy, 0, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(23, 20, 18, 0.55)';
             ctx.fill();
           } else if (beadShape === 'delica_cylinder') {
             // Miyuki Delica cylinder bead style (rectangular with rounded edges)
             const w = dotSize * 0.95;
-            const h = dotSize * 0.72;
-            const rx = radius * 0.25;
+            const h = dotSize * rowToColRatio * 0.72;
+            const crx = radius * 0.25;
 
             ctx.beginPath();
-            ctx.roundRect(cx - w / 2, cy - h / 2, w, h, rx);
+            ctx.roundRect(cx - w / 2, cy - h / 2, w, h, crx);
             ctx.fillStyle = color;
             ctx.fill();
             ctx.strokeStyle = '#171412';
@@ -359,12 +383,9 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
             ctx.stroke();
 
             if (beadFinish === 'glossy') {
-              // Cylinder longitudinal specular sheen
-              const grad = ctx.createLinearGradient(cx - w / 2, cy - h / 2, cx - w / 2, cy + h / 2);
-              grad.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
-              grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.1)');
-              grad.addColorStop(0.8, 'rgba(0, 0, 0, 0.3)');
-              ctx.fillStyle = grad;
+              ctx.beginPath();
+              ctx.rect(cx - w / 2 + 1, cy - h / 2 + 1, w - 2, Math.max(1, h * 0.25));
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
               ctx.fill();
             }
 
@@ -383,8 +404,6 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
-
-          ctx.restore();
         } else if (settings.showEmptyDots) {
           // Guide dot for empty bead placement
           ctx.beginPath();
@@ -397,7 +416,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
 
     // 6. Mirror Symmetry Axes
     if (mirrorMode === 'horizontal' || mirrorMode === 'both') {
-      const midX = (columns * cellSpacing) / 2;
+      const midX = (columns * cellSpacingX) / 2;
       ctx.save();
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#e87524';
@@ -409,7 +428,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       ctx.restore();
     }
     if (mirrorMode === 'vertical' || mirrorMode === 'both') {
-      const midY = (rows * cellSpacing) / 2;
+      const midY = (rows * cellSpacingY) / 2;
       ctx.save();
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#e87524';
@@ -435,11 +454,11 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       for (const pt of lineCells) {
         const mirrored = getMirroredCoords(pt.col, pt.row);
         for (const m of mirrored) {
-          const cx = m.col * cellSpacing + cellSpacing / 2;
-          const cy = m.row * cellSpacing + cellSpacing / 2;
+          const cx = m.col * cellSpacingX + cellSpacingX / 2;
+          const cy = m.row * cellSpacingY + cellSpacingY / 2;
           ctx.beginPath();
           if (beadShape === 'circle') {
-            ctx.ellipse(cx, cy, radius * 0.94 * 0.8, radius * 1.08 * 0.8, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx, cy, rx * 0.8, ry * 0.8, 0, 0, Math.PI * 2);
           } else {
             ctx.arc(cx, cy, radius * 0.8, 0, Math.PI * 2);
           }
@@ -449,23 +468,96 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       ctx.restore();
     }
 
-    // 8. Hover Highlight Indicator
+    // 8. Hover Highlight & Bead Drop Ghost Indicator
     if (hoverCell && currentTool !== 'pan') {
       const mirrored = getMirroredCoords(hoverCell.col, hoverCell.row);
       ctx.save();
       for (const m of mirrored) {
-        const cx = m.col * cellSpacing + cellSpacing / 2;
-        const cy = m.row * cellSpacing + cellSpacing / 2;
+        const cx = m.col * cellSpacingX + cellSpacingX / 2;
+        const cy = m.row * cellSpacingY + cellSpacingY / 2;
+        const targetIdx = m.row * settings.columns + m.col;
+        const existingColor = cells[targetIdx];
 
-        ctx.strokeStyle = currentTool === 'erase' ? '#ef4444' : '#e87524';
-        ctx.lineWidth = 1.5 / zoom;
-        ctx.beginPath();
-        if (beadShape === 'circle') {
-          ctx.ellipse(cx, cy, (radius * 0.94) + 2, (radius * 1.08) + 2, 0, 0, Math.PI * 2);
+        if (currentTool === 'paint' || currentTool === 'line') {
+          // Artisan Bead Drop Preview: show ghost bead in activeColor with subtle pulse
+          ctx.save();
+          ctx.globalAlpha = existingColor ? 0.85 : 0.65;
+          ctx.fillStyle = activeColor;
+          ctx.beginPath();
+          if (beadShape === 'circle') {
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          } else {
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+          }
+          ctx.fill();
+
+          // Dropping locator ring around the cell
+          ctx.globalAlpha = 1.0;
+          ctx.strokeStyle = '#f8f3eb';
+          ctx.lineWidth = 1.2 / zoom;
+          ctx.beginPath();
+          if (beadShape === 'circle') {
+            ctx.ellipse(cx, cy, rx + 2.5, ry + 2.5, 0, 0, Math.PI * 2);
+          } else {
+            ctx.arc(cx, cy, radius + 2.5, 0, Math.PI * 2);
+          }
+          ctx.stroke();
+          ctx.restore();
+        } else if (currentTool === 'erase') {
+          // Eraser Radius Preview: highlight affected bead cells and circular perimeter
+          const cellsInRadius = getCellsInRadius(m.col, m.row, eraserRadius, columns, rows);
+
+          ctx.save();
+          // Highlight every cell in the radius with red deletion indicator
+          for (const c of cellsInRadius) {
+            const beadCX = c.col * cellSpacingX + cellSpacingX / 2;
+            const beadCY = c.row * cellSpacingY + cellSpacingY / 2;
+            const hasBead = !!cells[c.row * columns + c.col];
+
+            ctx.fillStyle = hasBead ? 'rgba(239, 68, 68, 0.45)' : 'rgba(239, 68, 68, 0.15)';
+            ctx.beginPath();
+            if (beadShape === 'circle') {
+              ctx.ellipse(beadCX, beadCY, rx, ry, 0, 0, Math.PI * 2);
+            } else {
+              ctx.arc(beadCX, beadCY, radius, 0, Math.PI * 2);
+            }
+            ctx.fill();
+
+            if (hasBead) {
+              ctx.strokeStyle = '#ef4444';
+              ctx.lineWidth = 1.2 / zoom;
+              ctx.stroke();
+            }
+          }
+
+          // Outer dashed boundary for the eraser radius
+          const outerRX = Math.max(rx + 2, (eraserRadius - 0.5) * cellSpacingX);
+          const outerRY = Math.max(ry + 2, (eraserRadius - 0.5) * cellSpacingY);
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 1.5 / zoom;
+          ctx.setLineDash([4 / zoom, 3 / zoom]);
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, outerRX, outerRY, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Center crosshair / pivot dot
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(cx, cy, 2 / zoom, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
         } else {
-          ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+          ctx.strokeStyle = '#e87524';
+          ctx.lineWidth = 1.5 / zoom;
+          ctx.beginPath();
+          if (beadShape === 'circle') {
+            ctx.ellipse(cx, cy, rx + 2, ry + 2, 0, 0, Math.PI * 2);
+          } else {
+            ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
       }
       ctx.restore();
     }
@@ -481,7 +573,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       // Top columns numbers every 5 beads
       for (let c = 0; c < columns; c++) {
         if (c === 0 || (c + 1) % 5 === 0 || c === columns - 1) {
-          const x = c * cellSpacing + cellSpacing / 2;
+          const x = c * cellSpacingX + cellSpacingX / 2;
           ctx.fillText(String(c + 1), x, -4);
         }
       }
@@ -495,7 +587,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
         // When bottom-to-top (traditional loom standard), bottom row is 1 and top row is rows
         const rowNum = isBottomUp ? rows - r : r + 1;
         if (rowNum === 1 || rowNum % 5 === 0 || rowNum === rows) {
-          const y = r * cellSpacing + cellSpacing / 2;
+          const y = r * cellSpacingY + cellSpacingY / 2;
           ctx.fillText(String(rowNum), -6, y);
         }
       }
@@ -509,6 +601,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     settings,
     activeColor,
     currentTool,
+    eraserRadius,
     mirrorMode,
     referenceImage,
     refImageElement,
@@ -567,12 +660,32 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
         return;
       }
 
-      const newColor = isErase || currentTool === 'erase' ? null : activeColor;
-      const targetCoords = getMirroredCoords(col, row);
+      const isEraseAction = isErase || currentTool === 'erase';
 
+      if (isEraseAction) {
+        const targetCoords = getMirroredCoords(col, row);
+        const cellIndices = new Set<number>();
+
+        for (const m of targetCoords) {
+          const inRad = getCellsInRadius(m.col, m.row, eraserRadius, settings.columns, settings.rows);
+          for (const c of inRad) {
+            cellIndices.add(c.row * settings.columns + c.col);
+          }
+        }
+
+        const changes = Array.from(cellIndices).map((index) => ({
+          index,
+          color: null,
+        }));
+
+        onApplyCellChange(changes);
+        return;
+      }
+
+      const targetCoords = getMirroredCoords(col, row);
       const changes = targetCoords.map((c) => ({
         index: c.row * settings.columns + c.col,
-        color: newColor,
+        color: activeColor,
       }));
 
       onApplyCellChange(changes);
@@ -581,6 +694,8 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       currentTool,
       cells,
       settings.columns,
+      settings.rows,
+      eraserRadius,
       activeColor,
       onEyedropColor,
       floodFill,
@@ -624,7 +739,10 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     }
 
     const cell = screenToCell(e.clientX, e.clientY);
-    setHoverCell(cell);
+    if (cell?.col !== hoverCellRef.current?.col || cell?.row !== hoverCellRef.current?.row) {
+      hoverCellRef.current = cell;
+      setHoverCell(cell);
+    }
 
     if (!isMouseDownRef.current || !cell) return;
 
@@ -640,7 +758,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
         return;
       }
 
-      // Drag to paint: interpolate line between last and current cell
+      // Drag to paint or erase: interpolate line between last and current cell
       if (lastCellRef.current.col !== cell.col || lastCellRef.current.row !== cell.row) {
         const line = interpolateLine(
           lastCellRef.current.col,
@@ -648,8 +766,29 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
           cell.col,
           cell.row
         );
-        for (const pt of line) {
-          handleCellAction(pt.col, pt.row, isRightClickRef.current);
+
+        if (currentTool === 'erase' || isRightClickRef.current) {
+          const cellIndices = new Set<number>();
+          for (const pt of line) {
+            const mirrored = getMirroredCoords(pt.col, pt.row);
+            for (const m of mirrored) {
+              const inRad = getCellsInRadius(m.col, m.row, eraserRadius, settings.columns, settings.rows);
+              for (const c of inRad) {
+                cellIndices.add(c.row * settings.columns + c.col);
+              }
+            }
+          }
+          onApplyCellChange(Array.from(cellIndices).map((index) => ({ index, color: null })));
+        } else {
+          // Batch paint changes along the line for fluid, instantaneous performance
+          const cellIndices = new Set<number>();
+          for (const pt of line) {
+            const mirrored = getMirroredCoords(pt.col, pt.row);
+            for (const m of mirrored) {
+              cellIndices.add(m.row * settings.columns + m.col);
+            }
+          }
+          onApplyCellChange(Array.from(cellIndices).map((index) => ({ index, color: activeColor })));
         }
         lastCellRef.current = cell;
       }
@@ -713,6 +852,22 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     setPan({ x: newPanX, y: newPanY });
   };
 
+  const cursorStyle = useMemo(() => {
+    if (isPanning || currentTool === 'pan') {
+      return { cursor: isPanning ? 'grabbing' : 'grab' };
+    }
+    if (currentTool === 'eyedropper') {
+      return { cursor: 'crosshair' };
+    }
+    if (currentTool === 'erase') {
+      return { cursor: getEraserCursor(eraserRadius) };
+    }
+    if (currentTool === 'paint' || currentTool === 'line') {
+      return { cursor: getBeadHandCursor(activeColor) };
+    }
+    return { cursor: 'crosshair' };
+  }, [isPanning, currentTool, activeColor, eraserRadius]);
+
   return (
     <div
       ref={containerRef}
@@ -726,17 +881,14 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       }}
       onContextMenu={(e) => e.preventDefault()}
       onWheel={handleWheel}
-      className={`relative w-full h-full overflow-hidden bg-[#171412] touch-none ${
-        currentTool === 'pan' || isPanning
-          ? 'cursor-grab active:cursor-grabbing'
-          : currentTool === 'eyedropper'
-          ? 'cursor-crosshair'
-          : currentTool === 'erase'
-          ? 'cursor-cell'
-          : 'cursor-crosshair'
-      }`}
+      style={cursorStyle}
+      className="relative w-full h-full overflow-hidden bg-[#171412] touch-none"
     >
-      <canvas ref={canvasRef} className="absolute inset-0 block w-full h-full" />
+      <canvas
+        ref={canvasRef}
+        style={cursorStyle}
+        className="absolute inset-0 block w-full h-full"
+      />
 
       {/* Floating Viewport Status Overlay */}
       <div className="absolute top-3 left-3 bg-[#111111]/80 backdrop-blur-sm border border-[#2e2722] px-3 py-1.5 rounded-md text-[11px] text-[#a3978a] flex items-center gap-2 pointer-events-none select-none">
@@ -759,6 +911,46 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
           <span>Hover over canvas to inspect bead cells</span>
         )}
       </div>
+
+      {/* Floating Eraser Radius HUD */}
+      {currentTool === 'erase' && (
+        <div className="absolute top-3 right-3 bg-[#1f1b18]/90 backdrop-blur-sm border border-[#ef4444]/40 px-3 py-1.5 rounded-lg text-xs text-[#ded5c9] flex items-center gap-2.5 shadow-xl select-none z-10 pointer-events-auto">
+          <span className="flex items-center gap-1.5 font-medium text-[#ef4444]">
+            <Eraser className="w-3.5 h-3.5" />
+            <span>Eraser:</span>
+          </span>
+          {onChangeEraserRadius ? (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onChangeEraserRadius(Math.max(1, eraserRadius - 1))}
+                disabled={eraserRadius <= 1}
+                className="w-5 h-5 rounded bg-[#2e2722] hover:bg-[#3d332c] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-[#ded5c9] flex items-center justify-center font-bold font-mono text-xs transition-colors border border-[#3a3028]"
+                title="Decrease radius ([ key)"
+              >
+                -
+              </button>
+              <span className="font-mono font-bold text-white px-1.5 min-w-[20px] text-center text-xs">
+                {eraserRadius}
+              </span>
+              <button
+                type="button"
+                onClick={() => onChangeEraserRadius(Math.min(6, eraserRadius + 1))}
+                disabled={eraserRadius >= 6}
+                className="w-5 h-5 rounded bg-[#2e2722] hover:bg-[#3d332c] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-[#ded5c9] flex items-center justify-center font-bold font-mono text-xs transition-colors border border-[#3a3028]"
+                title="Increase radius (] key)"
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <span className="font-mono font-bold text-white">{eraserRadius}</span>
+          )}
+          <span className="text-[#a3978a] text-[10px] border-l border-[#3a3028] pl-2 font-mono">
+            [ / ]
+          </span>
+        </div>
+      )}
     </div>
   );
 };
