@@ -48,6 +48,30 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </p>
           </div>
 
+          {/* Weaving Companion Mode */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-[#e87524] mb-2 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Weaving Companion HUD (Hands-on-the-Loom)</span>
+            </h3>
+            <div className="border border-[#2e2722] rounded-lg overflow-hidden divide-y divide-[#2e2722] bg-[#171412]">
+              {[
+                { key: 'Space / Enter', desc: 'Pick up next bead group on needle, or advance to next row' },
+                { key: '→ / ←', desc: 'Step to next or previous row' },
+                { key: 'Click Canvas Row', desc: 'Instantly jump active guide bar to clicked row' },
+                { key: 'M', desc: 'Mute / unmute tactile wooden bead audio clicks' },
+                { key: 'Esc', desc: 'Exit Weaving Mode back to design canvas' },
+              ].map((item) => (
+                <div key={item.key} className="px-3 py-1.5 flex items-center justify-between">
+                  <span className="font-mono text-[#e87524] font-medium text-[11px] bg-[#1f1b18] px-1.5 py-0.5 rounded border border-[#2e2722]">
+                    {item.key}
+                  </span>
+                  <span className="text-[#a3978a]">{item.desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Mouse Gestures */}
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[#e87524] mb-2 flex items-center gap-1.5">
@@ -88,7 +112,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 { key: '1 - 6', desc: 'Quick set Eraser Radius (in Eraser mode)' },
                 { key: 'I', desc: 'Eyedropper (sample color)' },
                 { key: 'G', desc: 'Bucket Fill (flood fill)' },
-                { key: 'L', desc: 'Line Ruler (straight bead lines)' },
+                { key: 'L', desc: 'Line tool (shows live bead release count tooltip)' },
                 { key: 'H / Space', desc: 'Pan / Hand tool' },
                 { key: 'M', desc: 'Cycle Mirror Symmetry (H / V / Both / Off)' },
                 { key: 'Ctrl / Cmd + Z', desc: 'Undo' },

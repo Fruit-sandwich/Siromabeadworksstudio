@@ -11,6 +11,8 @@ import { DesignLibraryModal } from './components/DesignLibraryModal';
 import { ReferenceOverlayModal } from './components/ReferenceOverlayModal';
 import { ExportModal } from './components/ExportModal';
 import { HelpModal } from './components/HelpModal';
+import { WeavingCompanionHUD } from './components/WeavingCompanionHUD';
+import { loomSounds } from './utils/soundEffects';
 
 import {
   DesignDocument,
@@ -101,6 +103,71 @@ export default function App() {
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  // Interactive Weaving Companion State
+  const [isWeavingMode, setIsWeavingMode] = useState(false);
+  const [activeWeaveRow, setActiveWeaveRow] = useState<number>(1);
+  const [autoCenterWeaveRow, setAutoCenterWeaveRow] = useState(true);
+  const [weavingSoundEnabled, setWeavingSoundEnabled] = useState(true);
+  const [completedWeaveRows, setCompletedWeaveRows] = useState<number[]>([]);
+
+  // Sync soundEnabled with loomSounds instance
+  useEffect(() => {
+    loomSounds.enabled = weavingSoundEnabled;
+  }, [weavingSoundEnabled]);
+
+  // Load saved weaving progress for the active design
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`siroma_weave_progress_${design.id || 'default'}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.activeRow === 'number' && parsed.activeRow >= 1 && parsed.activeRow <= design.settings.rows) {
+          setActiveWeaveRow(parsed.activeRow);
+        } else {
+          setActiveWeaveRow(1);
+        }
+        if (Array.isArray(parsed.completedRows)) {
+          setCompletedWeaveRows(parsed.completedRows);
+        } else {
+          setCompletedWeaveRows([]);
+        }
+      } else {
+        setActiveWeaveRow(1);
+        setCompletedWeaveRows([]);
+      }
+    } catch {
+      setActiveWeaveRow(1);
+      setCompletedWeaveRows([]);
+    }
+  }, [design.id, design.settings.rows]);
+
+  // Persist weaving progress
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        `siroma_weave_progress_${design.id || 'default'}`,
+        JSON.stringify({
+          activeRow: activeWeaveRow,
+          completedRows: completedWeaveRows,
+          lastUpdated: new Date().toISOString(),
+        })
+      );
+    } catch {
+      // storage full or disabled
+    }
+  }, [design.id, activeWeaveRow, completedWeaveRows]);
+
+  const handleToggleCompletedWeaveRow = useCallback((rowNum: number) => {
+    setCompletedWeaveRows((prev) =>
+      prev.includes(rowNum) ? prev.filter((r) => r !== rowNum) : [...prev, rowNum]
+    );
+  }, []);
+
+  const handleResetWeavingProgress = useCallback(() => {
+    setCompletedWeaveRows([]);
+    setActiveWeaveRow(1);
+  }, []);
 
   // Save current design to localStorage on change
   useEffect(() => {
@@ -565,6 +632,16 @@ export default function App() {
       <Header
         design={design}
         validation={validation}
+        isWeavingMode={isWeavingMode}
+        onToggleWeavingMode={() => {
+          setIsWeavingMode((prev) => {
+            const next = !prev;
+            if (next) {
+              setCurrentTool('pan');
+            }
+            return next;
+          });
+        }}
         onOpenLibrary={() => setIsLibraryOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenMetadata={() => setIsMetadataOpen(true)}
@@ -622,20 +699,41 @@ export default function App() {
             onZoomChange={setZoom}
             onApplyCellChange={handleApplyCellChange}
             onEyedropColor={handleEyedropColor}
+            isWeavingMode={isWeavingMode}
+            activeWeaveRow={activeWeaveRow}
+            completedWeaveRows={completedWeaveRows}
+            onSelectWeaveRow={setActiveWeaveRow}
+            autoCenterWeaveRow={autoCenterWeaveRow}
           />
         </main>
       </div>
 
-      {/* 3. Bottom Palette Shelf */}
-      <PaletteBar
-        palette={design.palette}
-        activeColor={activeColor}
-        onSelectColor={setActiveColor}
-        onAddColor={handleAddPaletteColor}
-        onRemoveColor={handleRemovePaletteColor}
-        onApplyPreset={handleApplyPalettePreset}
-        colorCounts={colorCountsMap}
-      />
+      {/* 3. Bottom Shelf: Palette Bar or Weaving Companion HUD */}
+      {isWeavingMode ? (
+        <WeavingCompanionHUD
+          design={design}
+          activeRow={activeWeaveRow}
+          completedRows={completedWeaveRows}
+          onSelectRow={setActiveWeaveRow}
+          onToggleCompletedRow={handleToggleCompletedWeaveRow}
+          onResetProgress={handleResetWeavingProgress}
+          onExitWeavingMode={() => setIsWeavingMode(false)}
+          soundEnabled={weavingSoundEnabled}
+          onToggleSound={() => setWeavingSoundEnabled((s) => !s)}
+          autoCenter={autoCenterWeaveRow}
+          onToggleAutoCenter={() => setAutoCenterWeaveRow((c) => !c)}
+        />
+      ) : (
+        <PaletteBar
+          palette={design.palette}
+          activeColor={activeColor}
+          onSelectColor={setActiveColor}
+          onAddColor={handleAddPaletteColor}
+          onRemoveColor={handleRemovePaletteColor}
+          onApplyPreset={handleApplyPalettePreset}
+          colorCounts={colorCountsMap}
+        />
+      )}
 
       {/* Modals & Drawers */}
       <CanvasSettingsModal

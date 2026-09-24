@@ -21,6 +21,11 @@ interface CanvasViewportProps {
   onZoomChange: (zoom: number) => void;
   onApplyCellChange: (changes: { index: number; color: string | null }[]) => void;
   onEyedropColor: (color: string) => void;
+  isWeavingMode?: boolean;
+  activeWeaveRow?: number;
+  completedWeaveRows?: number[];
+  onSelectWeaveRow?: (rowNumber: number) => void;
+  autoCenterWeaveRow?: boolean;
 }
 
 export const CanvasViewport: React.FC<CanvasViewportProps> = ({
@@ -36,6 +41,11 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   onZoomChange,
   onApplyCellChange,
   onEyedropColor,
+  isWeavingMode = false,
+  activeWeaveRow = 1,
+  completedWeaveRows = [],
+  onSelectWeaveRow,
+  autoCenterWeaveRow = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,6 +62,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   const lineStartCellRef = useRef<{ col: number; row: number } | null>(null);
   const [hoverCell, setHoverCell] = useState<{ col: number; row: number } | null>(null);
   const hoverCellRef = useRef<{ col: number; row: number } | null>(null);
+  const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Physical Loom Aspect Ratio Calibration:
   // For 36*49 beads with physical ratio 5.7/11.1 cm:
@@ -118,6 +129,30 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     const initialY = Math.max(20, (container.clientHeight - canvasHeight * zoom) / 2);
     setPan({ x: initialX, y: initialY });
   }, [settings.columns, settings.rows, cellSpacingX, cellSpacingY]);
+
+  // Auto-center active weaving row in viewport
+  useEffect(() => {
+    if (!isWeavingMode || !containerRef.current || !activeWeaveRow || !autoCenterWeaveRow) return;
+    const isBottomUp = settings.rowNumberingDirection !== 'top-to-bottom';
+    const targetGridRow = isBottomUp ? settings.rows - activeWeaveRow : activeWeaveRow - 1;
+
+    const rowCenterY = (targetGridRow + 0.5) * cellSpacingY;
+    const containerH = containerRef.current.clientHeight;
+
+    const targetPanY = containerH / 2 - rowCenterY * zoom;
+    setPan((prev) => ({
+      x: prev.x,
+      y: targetPanY,
+    }));
+  }, [
+    isWeavingMode,
+    activeWeaveRow,
+    autoCenterWeaveRow,
+    cellSpacingY,
+    zoom,
+    settings.rows,
+    settings.rowNumberingDirection,
+  ]);
 
   // Transform screen coordinate to canvas cell (col, row)
   const screenToCell = useCallback(
@@ -328,6 +363,11 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     }
 
     // 5. Draw Beads & Guide Dots (High-performance rendering loop)
+    const isBottomUp = settings.rowNumberingDirection !== 'top-to-bottom';
+    const activeGridRow = isWeavingMode && activeWeaveRow
+      ? (isBottomUp ? rows - activeWeaveRow : activeWeaveRow - 1)
+      : null;
+
     const radius = dotSize / 2;
     const rx = radius * 0.94;
     const ry = radius * rowToColRatio * 0.94;
@@ -337,6 +377,20 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     for (let r = 0; r < rows; r++) {
       const cy = r * cellSpacingY + cellSpacingY / 2;
       const rowOffset = r * columns;
+
+      if (isWeavingMode && activeGridRow !== null) {
+        const rowNum = isBottomUp ? rows - r : r + 1;
+        const isCompleted = completedWeaveRows.includes(rowNum);
+        const isActive = r === activeGridRow;
+
+        if (isActive) {
+          ctx.globalAlpha = 1.0;
+        } else if (isCompleted) {
+          ctx.globalAlpha = 0.55;
+        } else {
+          ctx.globalAlpha = 0.32;
+        }
+      }
 
       for (let c = 0; c < columns; c++) {
         const color = cells[rowOffset + c];
@@ -412,6 +466,59 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
           ctx.fill();
         }
       }
+    }
+
+    if (isWeavingMode) {
+      ctx.globalAlpha = 1.0;
+    }
+
+    // 5b. Weaving Companion Active Row Guide Bar & Needle Indicator
+    if (isWeavingMode && activeGridRow !== null) {
+      const guideY = activeGridRow * cellSpacingY;
+      ctx.save();
+
+      // Luminous amber track background highlight
+      ctx.fillStyle = 'rgba(232, 117, 36, 0.16)';
+      ctx.fillRect(-16, guideY, canvasW + 32, cellSpacingY);
+
+      // Glowing border frame around active working row
+      ctx.strokeStyle = '#e87524';
+      ctx.lineWidth = 2 / zoom;
+      ctx.strokeRect(-16, guideY, canvasW + 32, cellSpacingY);
+
+      // Needle pass direction indicator (Row 1 is L->R, Row 2 is R<-L, etc.)
+      const isLtoR = (activeWeaveRow - 1) % 2 === 0;
+      const arrowX = isLtoR ? -8 : canvasW + 8;
+      const arrowY = guideY + cellSpacingY / 2;
+
+      ctx.fillStyle = '#e87524';
+      ctx.beginPath();
+      if (isLtoR) {
+        ctx.moveTo(arrowX - 8 / zoom, arrowY - 6 / zoom);
+        ctx.lineTo(arrowX + 4 / zoom, arrowY);
+        ctx.lineTo(arrowX - 8 / zoom, arrowY + 6 / zoom);
+      } else {
+        ctx.moveTo(arrowX + 8 / zoom, arrowY - 6 / zoom);
+        ctx.lineTo(arrowX - 4 / zoom, arrowY);
+        ctx.lineTo(arrowX + 8 / zoom, arrowY + 6 / zoom);
+      }
+      ctx.fill();
+
+      // Left margin row number tag
+      const tagW = Math.max(38, 48 / zoom);
+      ctx.fillStyle = '#1c1917';
+      ctx.fillRect(-tagW - 16, guideY + 1, tagW, cellSpacingY - 2);
+      ctx.strokeStyle = '#e87524';
+      ctx.lineWidth = 1.2 / zoom;
+      ctx.strokeRect(-tagW - 16, guideY + 1, tagW, cellSpacingY - 2);
+
+      ctx.fillStyle = '#e87524';
+      ctx.font = `bold ${Math.max(9, 11 / zoom)}px 'JetBrains Mono', monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`R${activeWeaveRow}`, -tagW / 2 - 16, guideY + cellSpacingY / 2);
+
+      ctx.restore();
     }
 
     // 6. Mirror Symmetry Axes
@@ -595,6 +702,169 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     }
 
     ctx.restore();
+
+    // 10. Floating Cursor Tooltip for Line Drag (Beads held for release)
+    if (
+      currentTool === 'line' &&
+      isMouseDownRef.current &&
+      lineStartCellRef.current &&
+      hoverCell
+    ) {
+      const lineCells = interpolateLine(
+        lineStartCellRef.current.col,
+        lineStartCellRef.current.row,
+        hoverCell.col,
+        hoverCell.row
+      );
+
+      const heldCount = lineCells.length;
+      let totalMirrored = heldCount;
+      if (mirrorMode !== 'none') {
+        const uniqueKeys = new Set<string>();
+        for (const pt of lineCells) {
+          const mirrored = getMirroredCoords(pt.col, pt.row);
+          for (const m of mirrored) {
+            uniqueKeys.add(`${m.col},${m.row}`);
+          }
+        }
+        totalMirrored = uniqueKeys.size;
+      }
+
+      const dx = Math.abs(hoverCell.col - lineStartCellRef.current.col) + 1;
+      const dy = Math.abs(hoverCell.row - lineStartCellRef.current.row) + 1;
+
+      const isErasing = isRightClickRef.current;
+      const beadColor = isErasing ? '#ef4444' : activeColor;
+
+      // Mouse position relative to container, with fallback to hover cell screen position
+      let cursorX = mousePosRef.current.x;
+      let cursorY = mousePosRef.current.y;
+      if (cursorX === 0 && cursorY === 0) {
+        cursorX = pan.x + (hoverCell.col * cellSpacingX + cellSpacingX / 2) * zoom;
+        cursorY = pan.y + (hoverCell.row * cellSpacingY + cellSpacingY / 2) * zoom;
+      }
+
+      const countText = `${heldCount} ${heldCount === 1 ? 'bead' : 'beads'}`;
+      const statusLabel = isErasing ? 'to erase' : 'held for release';
+      const mirrorText =
+        mirrorMode !== 'none' && totalMirrored !== heldCount
+          ? `(${totalMirrored} mirrored)`
+          : `${dx}×${dy}`;
+
+      ctx.save();
+
+      // Configure font metrics
+      ctx.font = "bold 11px 'JetBrains Mono', monospace";
+      const countWidth = ctx.measureText(countText).width;
+
+      ctx.font = "10px 'JetBrains Mono', monospace";
+      const statusWidth = ctx.measureText(statusLabel).width;
+      const mirrorWidth = ctx.measureText(mirrorText).width;
+
+      const badgePaddingX = 9;
+      const beadDotSize = 9;
+      const gap = 6;
+      const badgeW =
+        badgePaddingX * 2 +
+        beadDotSize +
+        gap +
+        countWidth +
+        gap +
+        statusWidth +
+        gap +
+        mirrorWidth;
+      const badgeH = 26;
+
+      // Position tooltip offset to top-right of cursor (smart flip if near edges)
+      let tooltipX = cursorX + 16;
+      let tooltipY = cursorY - badgeH - 10;
+
+      if (tooltipX + badgeW > width - 12) {
+        tooltipX = cursorX - badgeW - 16;
+      }
+      if (tooltipY < 12) {
+        tooltipY = cursorY + 22;
+      }
+      if (tooltipX < 12) {
+        tooltipX = 12;
+      }
+
+      // Drop shadow for crisp visual elevation
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 3;
+      ctx.shadowOffsetX = 0;
+
+      // Dark obsidian glass background pill
+      ctx.fillStyle = 'rgba(23, 20, 18, 0.95)';
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(tooltipX, tooltipY, badgeW, badgeH, 6);
+      } else {
+        ctx.rect(tooltipX, tooltipY, badgeW, badgeH);
+      }
+      ctx.fill();
+
+      // Luminous amber or red border
+      ctx.shadowColor = 'transparent';
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = isErasing ? '#ef4444' : '#e87524';
+      ctx.stroke();
+
+      // Mini Bead Dot Preview with 3D glass sheen
+      const dotCenterX = tooltipX + badgePaddingX + beadDotSize / 2;
+      const dotCenterY = tooltipY + badgeH / 2;
+
+      ctx.fillStyle = beadColor;
+      ctx.beginPath();
+      ctx.arc(dotCenterX, dotCenterY, beadDotSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.stroke();
+
+      // Glass specular reflection highlight
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.beginPath();
+      ctx.ellipse(dotCenterX - 1.2, dotCenterY - 1.2, 1.8, 1, -Math.PI / 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Center hole
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath();
+      ctx.arc(dotCenterX, dotCenterY, 1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Render Text Components
+      let textX = dotCenterX + beadDotSize / 2 + gap;
+
+      // 1. Bead Count (bold white)
+      ctx.font = "bold 11px 'JetBrains Mono', monospace";
+      ctx.fillStyle = '#f8f3eb';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(countText, textX, dotCenterY);
+      textX += countWidth + gap;
+
+      // 2. Status descriptor ("held for release")
+      ctx.font = "10px 'JetBrains Mono', monospace";
+      ctx.fillStyle = isErasing ? '#fca5a5' : '#a3978a';
+      ctx.fillText(statusLabel, textX, dotCenterY);
+      textX += statusWidth + gap;
+
+      // 3. Separator bullet
+      ctx.fillStyle = '#574b43';
+      ctx.fillText('·', textX, dotCenterY);
+      textX += gap;
+
+      // 4. Mirror / Delta badge
+      ctx.fillStyle = isErasing ? '#ef4444' : '#e87524';
+      ctx.font = "bold 10px 'JetBrains Mono', monospace";
+      ctx.fillText(mirrorText, textX, dotCenterY);
+
+      ctx.restore();
+    }
+
     ctx.restore();
   }, [
     cells,
@@ -610,6 +880,9 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     hoverCell,
     interpolateLine,
     getMirroredCoords,
+    isWeavingMode,
+    activeWeaveRow,
+    completedWeaveRows,
   ]);
 
   // Request animation frame for canvas redraw
@@ -706,6 +979,11 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
 
   // Mouse / Touch Event Handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      mousePosRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
     // Middle click or space key drag activates pan
     if (e.button === 1 || currentTool === 'pan' || e.altKey || e.shiftKey) {
       setIsPanning(true);
@@ -720,6 +998,14 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     const cell = screenToCell(e.clientX, e.clientY);
     if (!cell) return;
 
+    // In weaving mode, clicking on a row sets the active weaving row
+    if (isWeavingMode && onSelectWeaveRow) {
+      const isBottomUp = settings.rowNumberingDirection !== 'top-to-bottom';
+      const clickedRowNum = isBottomUp ? settings.rows - cell.row : cell.row + 1;
+      onSelectWeaveRow(clickedRowNum);
+      return;
+    }
+
     if (currentTool === 'line') {
       lineStartCellRef.current = cell;
       return;
@@ -730,6 +1016,11 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      mousePosRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
     if (isPanning) {
       setPan({
         x: e.clientX - panStartRef.current.x,

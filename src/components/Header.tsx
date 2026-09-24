@@ -8,12 +8,15 @@ import {
   Sliders,
   FileText,
   HelpCircle,
+  Sparkles,
 } from 'lucide-react';
 import { DesignDocument, PatternValidationResult } from '../types/bead';
 
 interface HeaderProps {
   design: DesignDocument;
   validation: PatternValidationResult;
+  isWeavingMode?: boolean;
+  onToggleWeavingMode: () => void;
   onOpenLibrary: () => void;
   onOpenSettings: () => void;
   onOpenMetadata: () => void;
@@ -26,6 +29,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   design,
   validation,
+  isWeavingMode = false,
+  onToggleWeavingMode,
   onOpenLibrary,
   onOpenSettings,
   onOpenMetadata,
@@ -132,6 +137,19 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Zone 3: Primary Actions */}
       <div className="flex items-center gap-2">
+        <button
+          onClick={onToggleWeavingMode}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md shadow-sm transition-all whitespace-nowrap cursor-pointer ${
+            isWeavingMode
+              ? 'bg-[#e87524] text-[#171412] ring-2 ring-[#e87524]/60 font-bold'
+              : 'bg-[#e87524]/15 text-[#f8f3eb] border border-[#e87524]/40 hover:bg-[#e87524]/25 hover:border-[#e87524]/60'
+          }`}
+          title="Interactive Loom Weaving Companion (Hands-on-the-loom row tracker)"
+        >
+          <Sparkles className={`w-3.5 h-3.5 ${isWeavingMode ? 'text-[#171412]' : 'text-[#e87524]'}`} />
+          <span>{isWeavingMode ? 'Weaving Active' : 'Weave Mode'}</span>
+        </button>
+
         <button
           onClick={onOpenPrint}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#f8f3eb] bg-[#2e2722] hover:bg-[#3d332d] border border-[#483d35] rounded-md transition-colors whitespace-nowrap"
