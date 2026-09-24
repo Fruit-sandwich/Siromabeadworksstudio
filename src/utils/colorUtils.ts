@@ -115,6 +115,20 @@ export function getContrastColor(hex: string): string {
   return yiq >= 128 ? '#171412' : '#ffffff';
 }
 
+/**
+ * Detects if a bead color is white or near-white so it can be rendered with a subtle stroke
+ * against a white canvas background, preventing it from disappearing.
+ */
+export function isWhiteBead(hex: string | null | undefined): boolean {
+  if (!hex) return false;
+  const clean = hex.trim().toLowerCase();
+  if (clean === '#ffffff' || clean === '#fff' || clean === 'white') return true;
+  const rgb = hexToRgb(clean);
+  if (!rgb) return false;
+  const yiq = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+  return yiq >= 238;
+}
+
 export const BEAD_STANDARDS = [
   { name: 'Siroma Tapestry 6cm × 11cm (34×62)', mm: 1.76, category: 'Artisan Tapestry' },
   { name: 'Miyuki Delica 11/0 (Cylinder)', mm: 1.6, category: 'Precision Cylinder' },

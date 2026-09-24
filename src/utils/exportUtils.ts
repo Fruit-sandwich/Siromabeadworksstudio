@@ -1,5 +1,5 @@
 import { DesignDocument, CanvasSettings, BeadColor } from '../types/bead';
-import { getColorName } from './colorUtils';
+import { getColorName, isWhiteBead } from './colorUtils';
 
 /**
  * Downloads a text file (JSON, CSV, SVG) in the browser
@@ -115,8 +115,8 @@ export function exportToSvg(design: DesignDocument): string {
 
   let svgElements = '';
 
-  // Background
-  svgElements += `<rect width="${width}" height="${height}" fill="#f4eee4" rx="8" />\n`;
+  // White Background
+  svgElements += `<rect width="${width}" height="${height}" fill="#ffffff" rx="8" />\n`;
 
   // Grid border frame
   const gridW = columns * cellSpacingX;
@@ -143,21 +143,24 @@ export function exportToSvg(design: DesignDocument): string {
       const radius = dotSize / 2;
 
       if (color) {
+        const isWhite = isWhiteBead(color);
+        const strokeAttr = isWhite ? ' stroke="#171412" stroke-width="0.5"' : '';
+
         if (beadShape === 'circle') {
           const rx = (radius * 0.94).toFixed(2);
           const ry = (radius * ratio * 0.94).toFixed(2);
           const holeRx = Math.max(0.75, radius * 0.2).toFixed(2);
           const holeRy = Math.max(0.9, radius * ratio * 0.22).toFixed(2);
-          svgElements += `  <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${color}" stroke="#171412" stroke-width="0.5" />\n`;
+          svgElements += `  <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${color}"${strokeAttr} />\n`;
           svgElements += `  <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#beadShine)" />\n`;
           // Subtle bead hole along vertical warp path
           svgElements += `  <ellipse cx="${cx}" cy="${cy}" rx="${holeRx}" ry="${holeRy}" fill="#171412" fill-opacity="0.5" />\n`;
         } else if (beadShape === 'delica_cylinder') {
           const w = dotSize * 0.9;
           const h = dotSize * ratio * 0.72;
-          svgElements += `  <rect x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${radius * 0.25}" fill="${color}" stroke="#171412" stroke-width="0.5" />\n`;
+          svgElements += `  <rect x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${radius * 0.25}" fill="${color}"${strokeAttr} />\n`;
         } else {
-          svgElements += `  <rect x="${cx - radius}" y="${cy - radius}" width="${dotSize}" height="${dotSize}" rx="2" fill="${color}" />\n`;
+          svgElements += `  <rect x="${cx - radius}" y="${cy - radius}" width="${dotSize}" height="${dotSize}" rx="2" fill="${color}"${strokeAttr} />\n`;
         }
       } else {
         // Empty guide dot

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   FolderOpen,
   Printer,
@@ -9,6 +9,7 @@ import {
   FileText,
   HelpCircle,
   Sparkles,
+  Upload,
 } from 'lucide-react';
 import { DesignDocument, PatternValidationResult } from '../types/bead';
 
@@ -24,6 +25,7 @@ interface HeaderProps {
   onOpenPrint: () => void;
   onOpenExport: () => void;
   onOpenHelp: () => void;
+  onLoadJson?: (file: File) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -38,7 +40,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPrint,
   onOpenExport,
   onOpenHelp,
+  onLoadJson,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { columns, rows, millimetresPerBead, millimetresPerRow, physicalWidthCm, physicalHeightCm } = design.settings;
   const widthMm = (physicalWidthCm ? physicalWidthCm * 10 : columns * (millimetresPerBead || 1.5833)).toFixed(1);
   const heightMm = (physicalHeightCm ? physicalHeightCm * 10 : rows * (millimetresPerRow || 2.2653)).toFixed(1);
@@ -90,6 +94,32 @@ export const Header: React.FC<HeaderProps> = ({
           <FolderOpen className="w-3.5 h-3.5 text-[#e87524]" />
           <span className="hidden sm:inline">Designs</span>
         </button>
+
+        {onLoadJson && (
+          <>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[#ded5c9] hover:text-[#f8f3eb] hover:bg-[#2e2722] rounded-md transition-colors"
+              title="Load / import a pattern JSON file directly into the canvas"
+            >
+              <Upload className="w-3.5 h-3.5 text-[#e87524]" />
+              <span className="hidden sm:inline">Load JSON</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  onLoadJson(file);
+                  e.target.value = '';
+                }
+              }}
+              className="hidden"
+            />
+          </>
+        )}
 
         <button
           onClick={onOpenSettings}

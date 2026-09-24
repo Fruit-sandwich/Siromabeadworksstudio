@@ -6,6 +6,7 @@ import {
   ReferenceImage,
 } from '../types/bead';
 import { getBeadHandCursor, getEraserCursor, getCellsInRadius } from '../utils/cursorUtils';
+import { isWhiteBead } from '../utils/colorUtils';
 import { Eraser } from 'lucide-react';
 
 interface CanvasViewportProps {
@@ -26,6 +27,7 @@ interface CanvasViewportProps {
   completedWeaveRows?: number[];
   onSelectWeaveRow?: (rowNumber: number) => void;
   autoCenterWeaveRow?: boolean;
+  onDropJsonFile?: (file: File) => void;
 }
 
 export const CanvasViewport: React.FC<CanvasViewportProps> = ({
@@ -46,9 +48,11 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   completedWeaveRows = [],
   onSelectWeaveRow,
   autoCenterWeaveRow = true,
+  onDropJsonFile,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Pan offsets (in screen pixels)
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -305,9 +309,14 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     const canvasW = columns * cellSpacingX;
     const canvasH = rows * cellSpacingY;
 
-    // 1. Linen Canvas Background
-    ctx.fillStyle = '#f4eee4';
+    // 1. White Canvas Background
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Subtle canvas boundary frame against the dark workspace
+    ctx.strokeStyle = '#ded5c9';
+    ctx.lineWidth = 1 / zoom;
+    ctx.strokeRect(0, 0, canvasW, canvasH);
 
     // 2. Reference Image Overlay (if active)
     if (referenceImage?.visible && refImageElement) {
@@ -397,6 +406,8 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
         const cx = c * cellSpacingX + cellSpacingX / 2;
 
         if (color) {
+          const isWhite = isWhiteBead(color);
+
           if (beadShape === 'circle') {
             // Seed bead on a loom: slightly oval / vertically elongated matching authentic loom tension
             ctx.beginPath();
@@ -404,10 +415,12 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
             ctx.fillStyle = color;
             ctx.fill();
 
-            // Subtle dark rim for physical depth
-            ctx.strokeStyle = '#171412';
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
+            // Exception: stroke only white beads so they remain visible on white canvas
+            if (isWhite) {
+              ctx.strokeStyle = '#171412';
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
 
             // Tactile highlight: fast specular sheen without creating heap gradient objects
             if (beadFinish === 'glossy') {
@@ -432,9 +445,12 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
             ctx.roundRect(cx - w / 2, cy - h / 2, w, h, crx);
             ctx.fillStyle = color;
             ctx.fill();
-            ctx.strokeStyle = '#171412';
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
+
+            if (isWhite) {
+              ctx.strokeStyle = '#171412';
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
 
             if (beadFinish === 'glossy') {
               ctx.beginPath();
@@ -454,9 +470,12 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
             ctx.roundRect(cx - radius, cy - radius, dotSize, dotSize, 1.5);
             ctx.fillStyle = color;
             ctx.fill();
-            ctx.strokeStyle = '#171412';
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
+
+            if (isWhite) {
+              ctx.strokeStyle = '#171412';
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
           }
         } else if (settings.showEmptyDots) {
           // Guide dot for empty bead placement
@@ -1172,14 +1191,60 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       }}
       onContextMenu={(e) => e.preventDefault()}
       onWheel={handleWheel}
+      onDragEnter={(e) => {
+        if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          setIsDragOver(true);
+        }
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          setIsDragOver(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        // Only set false if left the container itself
+        if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) {
+          setIsDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file && onDropJsonFile) {
+          onDropJsonFile(file);
+        }
+      }}
       style={cursorStyle}
-      className="relative w-full h-full overflow-hidden bg-[#171412] touch-none"
+      className={`relative w-full h-full overflow-hidden bg-[#171412] touch-none transition-all ${
+        isDragOver ? 'ring-4 ring-inset ring-[#e87524]' : ''
+      }`}
     >
       <canvas
         ref={canvasRef}
         style={cursorStyle}
         className="absolute inset-0 block w-full h-full"
       />
+
+      {/* Drag & Drop JSON Loading Banner Overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 bg-[#171412]/85 backdrop-blur-md flex flex-col items-center justify-center pointer-events-none z-50 animate-in fade-in duration-150">
+          <div className="p-8 rounded-2xl bg-[#1f1b18] border-2 border-dashed border-[#e87524] flex flex-col items-center gap-3 shadow-2xl max-w-sm text-center">
+            <div className="w-14 h-14 rounded-full bg-[#e87524]/20 text-[#e87524] flex items-center justify-center ring-8 ring-[#e87524]/10">
+              <span className="text-2xl font-bold font-mono">JSON</span>
+            </div>
+            <h3 className="font-cinzel text-lg font-bold text-[#f8f3eb]">
+              Drop JSON to Populate Canvas
+            </h3>
+            <p className="text-xs text-[#a3978a]">
+              Instantly load pattern colors, dimensions, and calibrated palette onto the loom.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Floating Viewport Status Overlay */}
       <div className="absolute top-3 left-3 bg-[#111111]/80 backdrop-blur-sm border border-[#2e2722] px-3 py-1.5 rounded-md text-[11px] text-[#a3978a] flex items-center gap-2 pointer-events-none select-none">

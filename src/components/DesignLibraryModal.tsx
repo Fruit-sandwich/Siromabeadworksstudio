@@ -87,8 +87,11 @@ export const DesignLibraryModal: React.FC<DesignLibraryModalProps> = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".json"
-              onChange={handleFileChange}
+              accept=".json,application/json"
+              onChange={(e) => {
+                handleFileChange(e);
+                e.target.value = '';
+              }}
               className="hidden"
             />
           </div>

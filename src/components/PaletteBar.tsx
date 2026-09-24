@@ -1,12 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, X, Palette, Check, Sparkles } from 'lucide-react';
+import { Plus, X, Palette, Check, ArrowLeftRight, Sparkles } from 'lucide-react';
 import { BeadColor } from '../types/bead';
 import { PALETTE_PRESETS, getContrastColor, getColorName } from '../utils/colorUtils';
 
 interface PaletteBarProps {
   palette: BeadColor[];
   activeColor: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  activeSlot?: 'primary' | 'secondary';
   onSelectColor: (hex: string) => void;
+  onSetSecondaryColor?: (hex: string) => void;
+  onSelectSlot?: (slot: 'primary' | 'secondary') => void;
+  onSwapActiveColor?: () => void;
   onAddColor: (hex: string) => void;
   onRemoveColor: (hex: string) => void;
   onApplyPreset: (presetKey: string) => void;
@@ -36,7 +42,13 @@ const POPULAR_BEAD_SWATCHES = [
 export const PaletteBar: React.FC<PaletteBarProps> = ({
   palette,
   activeColor,
+  primaryColor,
+  secondaryColor,
+  activeSlot = 'primary',
   onSelectColor,
+  onSetSecondaryColor,
+  onSelectSlot,
+  onSwapActiveColor,
   onAddColor,
   onRemoveColor,
   onApplyPreset,
@@ -48,8 +60,18 @@ export const PaletteBar: React.FC<PaletteBarProps> = ({
   const presetRef = useRef<HTMLDivElement>(null);
   const hexInputRef = useRef<HTMLInputElement>(null);
 
+  const priColor = (primaryColor || palette[0]?.hex || '#ea6a1a').toLowerCase();
+  const secColor = (secondaryColor || palette[1]?.hex || palette[0]?.hex || '#f28c28').toLowerCase();
+  const slot = activeSlot;
+
   const activeColorObj = palette.find(
     (p) => p.hex.toLowerCase() === activeColor.toLowerCase()
+  );
+  const primaryColorObj = palette.find(
+    (p) => p.hex.toLowerCase() === priColor
+  );
+  const secondaryColorObj = palette.find(
+    (p) => p.hex.toLowerCase() === secColor
   );
 
   // Close preset dropdown if clicking outside
@@ -111,34 +133,91 @@ export const PaletteBar: React.FC<PaletteBarProps> = ({
   return (
     <>
       <footer className="h-16 bg-[#1f1b18] border-t border-[#2e2722] px-4 flex items-center justify-between gap-4 z-20 shrink-0 select-none relative">
-        {/* Left: Active Color Information */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="relative">
-            <div
-              className="w-9 h-9 rounded-full shadow-md border-2 border-white/20 flex items-center justify-center transition-transform"
-              style={{ backgroundColor: activeColor }}
+        {/* Left: Artisan Dual-Color Swatches (Primary & Secondary with X Swap) */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 bg-[#171412] p-1 rounded-xl border border-[#2e2722]">
+            {/* Primary Bead (1) */}
+            <button
+              type="button"
+              onClick={() => (onSelectSlot ? onSelectSlot('primary') : onSelectColor(priColor))}
+              className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                slot === 'primary'
+                  ? 'ring-2 ring-[#e87524] ring-offset-1 ring-offset-[#171412] scale-105 shadow-md z-10'
+                  : 'opacity-70 hover:opacity-100 hover:scale-100'
+              }`}
+              style={{ backgroundColor: priColor }}
+              title={`Primary Color [1]: ${primaryColorObj?.name || priColor} (${priColor}) — Click to activate`}
             >
-              {/* Bead shine highlight */}
-              <div className="w-2.5 h-2.5 rounded-full bg-white/40 absolute top-1.5 left-1.5 blur-[0.5px]" />
-              <div className="w-2 h-2 rounded-full bg-black/40" />
-            </div>
+              {/* Glass sheen */}
+              <span className="w-2 h-2 rounded-full bg-white/40 absolute top-1 left-1 pointer-events-none blur-[0.3px]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-black/30 pointer-events-none" />
+              {/* Small "1" badge */}
+              <span className="absolute -bottom-1 -left-1 w-3.5 h-3.5 rounded-full bg-[#171412] border border-[#e87524] text-[#e87524] text-[9px] font-mono font-bold flex items-center justify-center pointer-events-none shadow">
+                1
+              </span>
+            </button>
+
+            {/* Quick Swap Button (X) */}
+            <button
+              type="button"
+              onClick={onSwapActiveColor}
+              className="w-6 h-6 rounded-md bg-[#221d19] hover:bg-[#332b24] text-[#a3978a] hover:text-[#f8f3eb] border border-[#38302a] hover:border-[#e87524]/60 flex items-center justify-center transition-all cursor-pointer active:scale-90"
+              title="Swap Active Color (Keyboard shortcut: X)"
+              aria-label="Swap Active Color (X)"
+            >
+              <ArrowLeftRight className="w-3 h-3 text-[#e87524]" />
+            </button>
+
+            {/* Secondary Bead (2) */}
+            <button
+              type="button"
+              onClick={() => (onSelectSlot ? onSelectSlot('secondary') : onSelectColor(secColor))}
+              className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                slot === 'secondary'
+                  ? 'ring-2 ring-[#e87524] ring-offset-1 ring-offset-[#171412] scale-105 shadow-md z-10'
+                  : 'opacity-70 hover:opacity-100 hover:scale-100'
+              }`}
+              style={{ backgroundColor: secColor }}
+              title={`Secondary Color [2]: ${secondaryColorObj?.name || secColor} (${secColor}) — Click to activate`}
+            >
+              {/* Glass sheen */}
+              <span className="w-2 h-2 rounded-full bg-white/40 absolute top-1 left-1 pointer-events-none blur-[0.3px]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-black/30 pointer-events-none" />
+              {/* Small "2" badge */}
+              <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#171412] border border-[#8f8174] text-[#ded5c9] text-[9px] font-mono font-bold flex items-center justify-center pointer-events-none shadow">
+                2
+              </span>
+            </button>
           </div>
 
+          {/* Color Info Labels */}
           <div className="hidden sm:flex flex-col">
-            <span className="text-xs font-semibold text-[#f8f3eb] leading-tight truncate max-w-[140px]">
-              {activeColorObj?.name || getColorName(activeColor)}
-            </span>
-            <span className="font-mono-numbers text-[10px] text-[#a3978a] tracking-wider uppercase">
-              {activeColor} {activeColorObj?.symbol ? `· ${activeColorObj.symbol}` : ''}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-[#f8f3eb] leading-tight truncate max-w-[130px]">
+                {activeColorObj?.name || getColorName(activeColor)}
+              </span>
+              <span className="px-1.5 py-0.2 rounded bg-[#e87524]/15 border border-[#e87524]/30 text-[#e87524] font-mono text-[9px] font-bold">
+                {slot === 'primary' ? '1 PRI' : '2 SEC'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-[#a3978a] font-mono-numbers">
+              <span className="uppercase">{activeColor}</span>
+              <span className="text-[#55473d]">·</span>
+              <span className="text-[#8f8174]">
+                <kbd className="px-1 py-0.2 bg-[#171412] border border-[#2e2722] rounded text-[9px] text-[#e87524] font-mono">X</kbd> swap
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Center: Scrollable Bead Color Swatches */}
         <div className="flex-1 flex items-center gap-2 overflow-x-auto py-2 px-1 scrollbar-thin">
           {palette.map((bead) => {
-            const isSelected = activeColor.toLowerCase() === bead.hex.toLowerCase();
-            const count = colorCounts.get(bead.hex.toLowerCase()) || 0;
+            const beadHexLower = bead.hex.toLowerCase();
+            const isSelected = activeColor.toLowerCase() === beadHexLower;
+            const isPrimary = priColor === beadHexLower;
+            const isSecondary = secColor === beadHexLower;
+            const count = colorCounts.get(beadHexLower) || 0;
             const contrast = getContrastColor(bead.hex);
 
             return (
@@ -146,13 +225,19 @@ export const PaletteBar: React.FC<PaletteBarProps> = ({
                 <button
                   type="button"
                   onClick={() => onSelectColor(bead.hex)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (onSetSecondaryColor) {
+                      onSetSecondaryColor(bead.hex);
+                    }
+                  }}
                   className={`w-9 h-9 rounded-full relative flex items-center justify-center transition-all cursor-pointer ${
                     isSelected
                       ? 'ring-2 ring-[#e87524] ring-offset-2 ring-offset-[#1f1b18] scale-105 shadow-md'
                       : 'hover:scale-105 opacity-90 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: bead.hex }}
-                  title={`${bead.name} (${bead.hex}) — ${count} placed`}
+                  title={`${bead.name} (${bead.hex})${isPrimary ? ' [Primary 1]' : ''}${isSecondary ? ' [Secondary 2]' : ''} — ${count} placed · Left-click: Set Active · Right-click: Set Secondary`}
                 >
                   {/* Bead highlight and hole */}
                   <span className="w-2 h-2 rounded-full bg-white/40 absolute top-1.5 left-1.5 pointer-events-none" />
@@ -165,6 +250,26 @@ export const PaletteBar: React.FC<PaletteBarProps> = ({
                     />
                   )}
                 </button>
+
+                {/* Primary/Secondary slot badges on swatch */}
+                {isPrimary && (
+                  <span
+                    className="absolute -top-1 -left-1 w-3.5 h-3.5 bg-[#e87524] text-[#171412] text-[9px] font-mono font-black rounded-full flex items-center justify-center shadow-sm ring-1 ring-[#1f1b18] pointer-events-none"
+                    title="Primary Color (1)"
+                  >
+                    1
+                  </span>
+                )}
+                {isSecondary && (
+                  <span
+                    className={`absolute -bottom-1 -left-1 w-3.5 h-3.5 bg-[#2a241f] text-[#ded5c9] border border-[#52443a] text-[9px] font-mono font-bold rounded-full flex items-center justify-center shadow-sm pointer-events-none ${
+                      isPrimary ? 'ml-3.5' : ''
+                    }`}
+                    title="Secondary Color (2)"
+                  >
+                    2
+                  </span>
+                )}
 
                 {/* Placed count badge */}
                 {count > 0 && (

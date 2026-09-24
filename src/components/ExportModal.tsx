@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { X, Download, FileCode, FileSpreadsheet, Image as ImageIcon, Sparkles, Check, Printer } from 'lucide-react';
 import { DesignDocument } from '../types/bead';
 import { exportToJson, exportToCsv, exportToSvg, downloadFile } from '../utils/exportUtils';
+import { isWhiteBead } from '../utils/colorUtils';
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   design: DesignDocument;
   onOpenPrint?: () => void;
+  onLoadJson?: (file: File) => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -15,9 +17,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onClose,
   design,
   onOpenPrint,
+  onLoadJson,
 }) => {
   const [copiedJson, setCopiedJson] = useState(false);
   const [includeGridInPng, setIncludeGridInPng] = useState(true);
+  const jsonFileInputRef = React.useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -56,8 +60,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
     ctx.scale(scale, scale);
 
-    // Linen canvas background
-    ctx.fillStyle = '#f4eee4';
+    // White canvas background
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
 
     // Title banner
@@ -76,7 +80,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     // Grid frame
     const gridW = columns * cellSpacing;
     const gridH = rows * cellSpacing;
-    ctx.fillStyle = '#fdfbf7';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(padding, padding, gridW, gridH);
 
     // Optional Grid lines
@@ -115,9 +119,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           ctx.fillStyle = color;
           ctx.fill();
 
-          ctx.strokeStyle = '#171412';
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
+          // Stroke exception for white beads
+          if (isWhiteBead(color)) {
+            ctx.strokeStyle = '#171412';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
 
           // Highlight
           if (beadFinish === 'glossy') {
@@ -238,7 +245,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <div>
                 <h3 className="font-semibold text-xs text-[#f8f3eb]">High-Resolution PNG Image</h3>
                 <p className="text-xs text-[#a3978a] mt-0.5">
-                  High-DPI raster preview with tactile bead highlights on linen canvas.
+                  High-DPI raster preview with tactile bead highlights on crisp white canvas.
                 </p>
                 <label className="flex items-center gap-2 mt-2 cursor-pointer text-[11px] text-[#ded5c9]">
                   <input
@@ -293,12 +300,38 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleExportJson}
-              className="px-3 py-1.5 bg-[#1f1b18] hover:bg-[#2e2722] border border-[#2e2722] text-[#f8f3eb] text-xs font-semibold rounded-md shrink-0 transition-colors"
-            >
-              Export JSON
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {onLoadJson && (
+                <>
+                  <button
+                    onClick={() => jsonFileInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-[#171412] hover:bg-[#2e2722] border border-[#2e2722] text-[#ded5c9] hover:text-[#f8f3eb] text-xs font-semibold rounded-md transition-colors"
+                  >
+                    Load JSON
+                  </button>
+                  <input
+                    ref={jsonFileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        onLoadJson(file);
+                        onClose();
+                        e.target.value = '';
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </>
+              )}
+              <button
+                onClick={handleExportJson}
+                className="px-3 py-1.5 bg-[#1f1b18] hover:bg-[#2e2722] border border-[#2e2722] text-[#f8f3eb] text-xs font-semibold rounded-md transition-colors"
+              >
+                Export JSON
+              </button>
+            </div>
           </div>
 
           {/* Option 4: CSV Matrix */}

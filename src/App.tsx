@@ -26,6 +26,7 @@ import {
 import { PRESET_DESIGNS, DEFAULT_SETTINGS } from './data/presetDesigns';
 import { validatePattern } from './utils/validationUtils';
 import { PALETTE_PRESETS, buildPaletteColors } from './utils/colorUtils';
+import { parseAndNormalizeDesignJson } from './utils/importUtils';
 
 const STORAGE_KEY_CURRENT = 'siroma_beadcanvas_current_v2';
 const STORAGE_KEY_LIBRARY = 'siroma_beadcanvas_library_v2';
@@ -85,14 +86,40 @@ export default function App() {
   const [historyIndex, setHistoryIndex] = useState(0);
 
   // Active drawing tools and settings
-  const [activeColor, setActiveColor] = useState<string>(() => {
-    return design.palette[0]?.hex || '#f28c28';
+  // By default, the first two colors on swatches are primary and secondary
+  const [primaryColor, setPrimaryColor] = useState<string>(() => {
+    return design.palette[0]?.hex || '#ea6a1a';
   });
+  const [secondaryColor, setSecondaryColor] = useState<string>(() => {
+    return design.palette[1]?.hex || design.palette[0]?.hex || '#f28c28';
+  });
+  const [activeSlot, setActiveSlot] = useState<'primary' | 'secondary'>('primary');
+
+  // Active color reflects the currently active slot (Primary or Secondary)
+  const activeColor = activeSlot === 'primary' ? primaryColor : secondaryColor;
+
   const [currentTool, setCurrentTool] = useState<ToolMode>('paint');
   const [eraserRadius, setEraserRadius] = useState<number>(1);
   const [mirrorMode, setMirrorMode] = useState<MirrorMode>('none');
   const [zoom, setZoom] = useState<number>(1.0);
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
+
+  // Keep primary and secondary colors valid within the current palette
+  useEffect(() => {
+    if (design.palette.length === 0) return;
+    const hasPrimary = design.palette.some(
+      (p) => p.hex.toLowerCase() === primaryColor.toLowerCase()
+    );
+    if (!hasPrimary) {
+      setPrimaryColor(design.palette[0].hex);
+    }
+    const hasSecondary = design.palette.some(
+      (p) => p.hex.toLowerCase() === secondaryColor.toLowerCase()
+    );
+    if (!hasSecondary) {
+      setSecondaryColor(design.palette[1]?.hex || design.palette[0].hex);
+    }
+  }, [design.palette, primaryColor, secondaryColor]);
 
   // Modal open states
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -254,11 +281,38 @@ export default function App() {
     [pushHistory]
   );
 
-  // Eyedropper action: select clicked bead's color
+  // Swatch selection: updates the currently active slot (Primary or Secondary)
+  const handleSelectColor = useCallback(
+    (hex: string) => {
+      const normalized = hex.toLowerCase();
+      if (activeSlot === 'primary') {
+        setPrimaryColor(normalized);
+      } else {
+        setSecondaryColor(normalized);
+      }
+    },
+    [activeSlot]
+  );
+
+  const handleSetSecondaryColor = useCallback((hex: string) => {
+    setSecondaryColor(hex.toLowerCase());
+  }, []);
+
+  // Swap active color between Primary and Secondary (Keyboard shortcut 'X')
+  const handleSwapActiveColor = useCallback(() => {
+    setActiveSlot((prev) => (prev === 'primary' ? 'secondary' : 'primary'));
+    loomSounds.playBeadClick();
+  }, []);
+
+  // Eyedropper action: select clicked bead's color into the active slot
   const handleEyedropColor = useCallback(
     (sampledColor: string) => {
       const normalized = sampledColor.toLowerCase();
-      setActiveColor(normalized);
+      if (activeSlot === 'primary') {
+        setPrimaryColor(normalized);
+      } else {
+        setSecondaryColor(normalized);
+      }
       // Auto-switch back to paint tool for fluid workflow
       setCurrentTool('paint');
 
@@ -271,7 +325,7 @@ export default function App() {
         }));
       }
     },
-    [design.palette]
+    [activeSlot, design.palette]
   );
 
   // Undo / Redo handlers
@@ -370,6 +424,10 @@ export default function App() {
           setMirrorMode(modes[next]);
           break;
         }
+        case 'x':
+          e.preventDefault();
+          handleSwapActiveColor();
+          break;
         case '+':
         case '=':
           setZoom((z) => Math.min(8.0, z * 1.2));
@@ -402,27 +460,30 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, mirrorMode, currentTool]);
+  }, [handleUndo, handleRedo, mirrorMode, currentTool, handleSwapActiveColor]);
 
   // Palette modifications
   const handleAddPaletteColor = (hex: string) => {
     const normalized = hex.toLowerCase();
     if (design.palette.some((p) => p.hex.toLowerCase() === normalized)) {
-      setActiveColor(normalized);
+      handleSelectColor(normalized);
       return;
     }
     const updatedHexes = [...design.palette.map((p) => p.hex), normalized];
     const newPalette = buildPaletteColors(updatedHexes);
     setDesign((prev) => ({ ...prev, palette: newPalette }));
-    setActiveColor(normalized);
+    handleSelectColor(normalized);
   };
 
   const handleRemovePaletteColor = (hex: string) => {
     const filtered = design.palette.filter((p) => p.hex.toLowerCase() !== hex.toLowerCase());
     if (filtered.length === 0) return;
     setDesign((prev) => ({ ...prev, palette: filtered }));
-    if (activeColor.toLowerCase() === hex.toLowerCase()) {
-      setActiveColor(filtered[0].hex);
+    if (primaryColor.toLowerCase() === hex.toLowerCase()) {
+      setPrimaryColor(filtered[0].hex);
+    }
+    if (secondaryColor.toLowerCase() === hex.toLowerCase()) {
+      setSecondaryColor(filtered[1]?.hex || filtered[0].hex);
     }
   };
 
@@ -431,7 +492,9 @@ export default function App() {
     if (!preset) return;
     const newPalette = buildPaletteColors(preset.colors);
     setDesign((prev) => ({ ...prev, palette: newPalette }));
-    setActiveColor(newPalette[0].hex);
+    setPrimaryColor(newPalette[0].hex);
+    setSecondaryColor(newPalette[1]?.hex || newPalette[0].hex);
+    setActiveSlot('primary');
   };
 
   // Add unsupported colors to palette helper
@@ -510,9 +573,9 @@ export default function App() {
     setDesign(loaded);
     setHistory([{ cells: [...loaded.cells] }]);
     setHistoryIndex(0);
-    if (loaded.palette.length > 0) {
-      setActiveColor(loaded.palette[0].hex);
-    }
+    setPrimaryColor(loaded.palette[0]?.hex || '#ea6a1a');
+    setSecondaryColor(loaded.palette[1]?.hex || loaded.palette[0]?.hex || '#f28c28');
+    setActiveSlot('primary');
   };
 
   const handleCreateNewDesign = () => {
@@ -537,7 +600,9 @@ export default function App() {
     setSavedDesigns((prev) => [newDoc, ...prev]);
     setHistory([{ cells: newDoc.cells }]);
     setHistoryIndex(0);
-    setActiveColor(newDoc.palette[0].hex);
+    setPrimaryColor(newDoc.palette[0]?.hex || '#ea6a1a');
+    setSecondaryColor(newDoc.palette[1]?.hex || newDoc.palette[0]?.hex || '#f28c28');
+    setActiveSlot('primary');
   };
 
   const handleDuplicateDesign = (source: DesignDocument) => {
@@ -572,55 +637,23 @@ export default function App() {
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const parsed = JSON.parse(text);
+        const importedDoc = parseAndNormalizeDesignJson(text, file.name);
 
-        // Map imported schema to DesignDocument
-        const importedCols = parsed.canvas_dimensions?.columns || parsed.settings?.columns || 36;
-        const importedRows = parsed.canvas_dimensions?.rows || parsed.settings?.rows || 49;
-        const importedCells = parsed.cell_colours || parsed.cells || new Array(importedCols * importedRows).fill(null);
-
-        let importedPalette: BeadColor[] = [];
-        if (Array.isArray(parsed.palette)) {
-          if (typeof parsed.palette[0] === 'string') {
-            importedPalette = buildPaletteColors(parsed.palette);
-          } else {
-            importedPalette = parsed.palette.map((p: any) => ({
-              hex: p.hex || '#111111',
-              name: p.name || 'Imported Bead',
-              symbol: p.symbol || '●',
-            }));
+        setSavedDesigns((prev) => {
+          // Avoid duplicates by id
+          const existingIdx = prev.findIndex((d) => d.id === importedDoc.id);
+          if (existingIdx >= 0) {
+            const next = [...prev];
+            next[existingIdx] = importedDoc;
+            return next;
           }
-        } else {
-          importedPalette = buildPaletteColors(PALETTE_PRESETS.warm_earth.colors);
-        }
+          return [importedDoc, ...prev];
+        });
 
-        const importedDoc: DesignDocument = {
-          id: `import-${Date.now()}`,
-          schemaVersion: '0.1.0',
-          metadata: {
-            title: parsed.title || parsed.metadata?.title || file.name.replace(/\.json$/i, ''),
-            author: parsed.author || parsed.metadata?.author || 'Imported Artisan',
-            description: parsed.description || parsed.metadata?.description || 'Imported from JSON',
-            materialsNotes: parsed.materials_notes || parsed.metadata?.materialsNotes || '',
-            createdAt: parsed.created_at || new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            appVersion: '0.1.0',
-          },
-          settings: {
-            ...DEFAULT_SETTINGS,
-            columns: importedCols,
-            rows: importedRows,
-            millimetresPerBead: parsed.canvas_dimensions?.physical_scale_mm_per_bead || 1.6,
-          },
-          palette: importedPalette,
-          cells: importedCells,
-        };
-
-        setSavedDesigns((prev) => [importedDoc, ...prev]);
         handleLoadDesign(importedDoc);
         setIsLibraryOpen(false);
-      } catch (err) {
-        alert('Failed to parse JSON file. Please ensure it is a valid Beaded Canvas design file.');
+      } catch {
+        alert('Failed to parse JSON file. Please ensure it is a valid bead pattern or JSON design file.');
       }
     };
     reader.readAsText(file);
@@ -649,6 +682,7 @@ export default function App() {
         onOpenPrint={() => setIsPrintOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
         onOpenHelp={() => setIsHelpOpen(true)}
+        onLoadJson={handleImportJson}
       />
 
       {/* 2. Main Studio Body: Toolbar + Canvas Viewport */}
@@ -704,6 +738,7 @@ export default function App() {
             completedWeaveRows={completedWeaveRows}
             onSelectWeaveRow={setActiveWeaveRow}
             autoCenterWeaveRow={autoCenterWeaveRow}
+            onDropJsonFile={handleImportJson}
           />
         </main>
       </div>
@@ -727,7 +762,13 @@ export default function App() {
         <PaletteBar
           palette={design.palette}
           activeColor={activeColor}
-          onSelectColor={setActiveColor}
+          primaryColor={primaryColor}
+          secondaryColor={secondaryColor}
+          activeSlot={activeSlot}
+          onSelectColor={handleSelectColor}
+          onSetSecondaryColor={handleSetSecondaryColor}
+          onSelectSlot={setActiveSlot}
+          onSwapActiveColor={handleSwapActiveColor}
           onAddColor={handleAddPaletteColor}
           onRemoveColor={handleRemovePaletteColor}
           onApplyPreset={handleApplyPalettePreset}
@@ -788,6 +829,7 @@ export default function App() {
         onClose={() => setIsExportOpen(false)}
         design={design}
         onOpenPrint={() => setIsPrintOpen(true)}
+        onLoadJson={handleImportJson}
       />
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />

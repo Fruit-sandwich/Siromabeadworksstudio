@@ -79,7 +79,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       id: 'paint',
       label: 'Drop Bead',
       icon: <BeadDropIcon className="w-5 h-5" beadColor={activeColor} />,
-      shortcut: 'B / P',
+      shortcut: 'B / P (X: swap)',
     },
     { id: 'erase', label: 'Eraser', icon: <Eraser className="w-4 h-4" />, shortcut: 'E / Right-Click' },
     { id: 'eyedropper', label: 'Eyedropper', icon: <Pipette className="w-4 h-4" />, shortcut: 'I' },
